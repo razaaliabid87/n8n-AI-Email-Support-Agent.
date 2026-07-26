@@ -1,0 +1,3747 @@
+{
+  "name": "AI Email Support Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "maxResults": 1,
+        "filters": {}
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -1056,
+        400
+      ],
+      "id": "c02d5a82-7124-45a2-bd77-59277aec0e5c",
+      "name": "Gmail Trigger",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "5VgA7Z0GSVYoraL1",
+          "name": "Gmail account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{$binary.data.mimeType}}",
+                    "rightValue": "application/pdf",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "d36258bd-5ca1-49f1-ba2e-6246b9683f41"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "pdf"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "50658970-1122-4abc-954f-960ea7b2f6e1",
+                    "leftValue": "={{$binary.data.mimeType}}",
+                    "rightValue": "text/plain",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "docx/text"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "none"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        0,
+        272
+      ],
+      "id": "bb5cd3a3-909a-43fc-8987-0109caf45670",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "options": {
+          "keepSource": "both"
+        }
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        240,
+        176
+      ],
+      "id": "54e9324c-fd0b-4351-8bc5-24df3c861fca",
+      "name": "Extract from PDF"
+    },
+    {
+      "parameters": {
+        "operation": "text",
+        "options": {
+          "keepSource": "binary"
+        }
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        240,
+        368
+      ],
+      "id": "d8e3feb5-4b42-426e-a524-f26c398759a7",
+      "name": "Extract from TEXT"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        688,
+        224
+      ],
+      "id": "db443d72-3739-4df1-aa43-ac03fedf0894",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "jsCode": "const output = [];\n\n\nfor (const item of items) {\n\n        output.push({\n\n            json: {\n              mime_type: item.binary.data.mimeType,\n              file_name: item.binary.data.fileName,\n              //file_name: item.json.fileName,\n              file_text: item.json.text\n            \n              \n            }\n        });\n}\n\n\nreturn output;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        464,
+        176
+      ],
+      "id": "4635b343-e80f-469b-9628-72677e7a9bb4",
+      "name": "Normalize PDF Data"
+    },
+    {
+      "parameters": {
+        "jsCode": "const output = [];\n\nfor (const item of items) {\n\n        output.push({\n\n            json: {\n              mime_type: item.binary.data.mimeType,\n              file_name: item.binary.data.fileName, \n              //file_name: $input.first().json.fileName,\n              file_text: item.json.data\n            \n              \n            }\n        });\n}\n\n\nreturn output;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        368
+      ],
+      "id": "861a8eea-4623-4a7c-a041-8ec0cc8856cc",
+      "name": "Normalize TEXT Data"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  {\n    json:\n      {\n        message_date: $('Getting Gmail Message').first().json.headers.date,\n        \n        message_id: $('Getting Gmail Message').first().json.id,\n        \n        thread_id: $('Getting Gmail Message').first().json.threadId,\n        \n        from_email: $('Getting Gmail Message').first().json.from.value[0].address,\n        \n        from_name: $('Getting Gmail Message').first().json.from.value[0].name,\n        \n        subject: $('Getting Gmail Message').first().json.subject,\n        \n        message_body: $('Getting Gmail Message').first().json.text,\n        \n        message_body_length: \n        $('Getting Gmail Message').first().json.text.length,\n        \n        attachment_count: $input.first().json.no_of_attachments\n}\n  }\n]\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -272,
+        736
+      ],
+      "id": "1e010053-89f4-4f6d-a41f-98fbfbadb0f9",
+      "name": "Normalize Email Message Body Data"
+    },
+    {
+      "parameters": {
+        "jsCode": "const attachment_length = [];\nlet total_attachment_Length =0;\nfor(const item of items){\n\n  const text = item.json.file_text || \"\";\nconst temp = text.length;\n  \n  total_attachment_Length = total_attachment_Length + temp;\n  attachment_length.push({\n    json:\n    {\n      attachment_name: item.json.file_name,\n      attachment_mime_type: item.json.mime_type,\n      attachment_length: temp,\n      attachment_text: item.json.file_text\n    \n    }\n  });\n}\nattachment_length.push({\n  json:\n    {\n      total_attachment_length: total_attachment_Length\n    }\n});\n\nreturn attachment_length;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        704,
+        480
+      ],
+      "id": "a9b180c0-0338-4550-ae2b-76404cdd7f18",
+      "name": "Total and Single Attachment Length Calculator"
+    },
+    {
+      "parameters": {
+        "jsCode": "const output = [];\n\n\nfor (const item of items) {\n\n    if (!item.binary) continue;\n    else{\n\n      for (const key of Object.keys(item.binary)) {\n  \n        \n        const attachment = item.binary[key];\n\n        output.push({\n\n            \n\n            binary: {\n                data: attachment\n            }\n\n        });\n\n    }\n    }\n    \n\n}\n\nreturn output;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -224,
+        448
+      ],
+      "id": "81743193-806c-43c1-ac44-0cb73be02094",
+      "name": "Creating Items of Multiple Attachments and No of Attachment Counter"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "f84c8e58-c626-453e-9a8c-ef2f326105d4",
+              "leftValue": "={{ toString($json.from) }}",
+              "rightValue": "no-reply",
+              "operator": {
+                "type": "string",
+                "operation": "notContains"
+              }
+            },
+            {
+              "id": "38b79f1c-0cb7-43bb-89d6-272f8a28853a",
+              "leftValue": "={{ toString($json.subject) }}",
+              "rightValue": "no-reply",
+              "operator": {
+                "type": "string",
+                "operation": "notContains"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -560,
+        544
+      ],
+      "id": "af0daa45-38a9-4520-95bb-4ac0fcf3d341",
+      "name": "If not spam"
+    },
+    {
+      "parameters": {
+        "content": "Email Intake & Document Processing Workflow:\nThis workflow is for Email Intake and Attachment Processing. As well, for generating A simple JSON output for processing in AI Classififaction.\n\nBy the end of this Phase/Workflow, We would have output like:\n\nIn the end of this phase 1, I have output look like in JSON:\n\nSender Name\n\nSender Email\n\nMessage ID\n\nThread ID\n\nMessage Date and Time\n\nEmail Subject\n\nEmail Message Body\n\nLength of Message\n\n\n\nTotal No. of Attachments (if any)\n\nTotal No. of Supported Attachments\n\nTotal No. of Unsupported Attachments\n\n\nAttachment File Name (For Each Attachment)\n\nAttachment File Mime Type (For Each Attachment)\n\nAttachment File Text Extracted (For Each Attachment)\n\nAttachment File Text Length (For Each Attachment)\n\n\n\nTotal Length of all Attachment Files' Text",
+        "height": 1312,
+        "width": 2448
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1360,
+        80
+      ],
+      "id": "8275e809-52db-4254-94e5-c928307469a3",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "jsCode": "const output = [];\nfor (const item of items) {\n\n    if (!item.binary) continue;\n    else{\n\n      for (const key of Object.keys(item.binary)) {\n  \n        \n        const attachment = item.binary[key];\n\n        output.push({\n\n            json: {\n                originalKey: key,\n                fileName: attachment.fileName || \"\",\n                mimeType: attachment.mimeType || \"\",\n                fileExtension: attachment.fileExtension || \"\",\n                fileSize: attachment.fileSize || 0,\n              \n            }\n\n        });\n\n    }\n    }\n    \n\n}\n\nreturn output;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        32,
+        544
+      ],
+      "id": "f5ee9e05-db8f-4c3d-a129-34c71e38c9c8",
+      "name": "File Information of Each Attachment"
+    },
+    {
+      "parameters": {
+        "jsCode": "let supported = 0;\nlet unsupported = 0;\nlet attachment_count = 0;\nconst supportedMimeTypes = [\n  \"application/pdf\",\n  \"text/plain\",\n  \"application/json\",\n  \"application/vnd.openxmlformats-officedocument.wordprocessingml.document\",\n  \"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet\"\n];\n\nfor (const item of items) {\nattachment_count++;\nif (supportedMimeTypes.includes($input.first().json.fileExtension)) {\n    supported++;\n} else {\n    unsupported++;\n}\n\n}\n\nreturn [\n  {\n    json: {\n      supportedAttachments: supported,\n      unsupportedAttachments: unsupported,\n      totalAttachments: attachment_count\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        272,
+        704
+      ],
+      "id": "04b55fd5-7b03-47a6-895d-166479abc4b1",
+      "name": "Total & Number of supported and un-supported documents"
+    },
+    {
+      "parameters": {
+        "numberInputs": 3
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        736,
+        976
+      ],
+      "id": "09351a7d-41f1-40a8-ad13-426cba2978aa",
+      "name": "Merge1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Email information is assumed to be identical on every item,\n// so we take it from the first item.\n\n\n\nlet context = `\n==============\nATTACHMENTS:\n==============\n\n`;\n\nlet attachmentNumber = 1;\n\nfor (const item of items) {\n  if (!item.json.attachment_name || !item.json.attachment_mime_type){\n    continue;\n  }\n    const attachment_name = item.json.attachment_name;\n    const attachment_mime_type = item.json.attachment_mime_type;\n    const attachment_text = item.json.attachment_text;\n  const attachment_length= item.json.attachment_length;\n  \n    context += `\n--------------\nAttachment ${attachmentNumber}\n--------------\n\nFile Name:\n${attachment_name}\n\nMime Type:\n${attachment_mime_type}\n\nAttachment Length:\n${attachment_length}\n\nExtracted Text:\n${attachment_text}\n\n\n`;\n\n    attachmentNumber++;\n}\n\nreturn [\n    {\n        json: {\n            ai_context: context\n        }\n    }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        736
+      ],
+      "id": "b8909cf8-d3c2-4d72-a642-03ae4daa8ccb",
+      "name": "Context Builder into single item Code Node"
+    },
+    {
+      "parameters": {
+        "jsCode": "const result = {};\n\nfor (const item of items) {\n    Object.assign(result, item.json);\n}\n\nreturn [\n    {\n        json: result\n    }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        864
+      ],
+      "id": "21ed53d7-5a0b-4ad6-ab58-c2cb47c5dd5b",
+      "name": "Making One Item of Multiple Items"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        1184,
+        624
+      ],
+      "id": "610f3622-5528-4d71-96bf-d4d7d50ed6e2",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "thnOcnvjIC2zdqMH",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===============================\n// Enterprise Business Validator\n// ===============================\n\n// AI output from previous node\nconst data = { ...$json };\n\n// Validation report\nconst validation = {\n  valid: true,\n  errors: [],\n  warnings: []\n};\n\n// ===============================\n// Required Fields\n// ===============================\n\nconst requiredFields = [\n  \"category\",\n  \"subcategory\",\n  \"priority\",\n  \"urgency\",\n  \"sentiment\",\n  \"language\",\n  \"confidence\",\n  \"requires_human\",\n  \"summary\",\n  \"recommended_action\",\n  \"reasoning\"\n];\n\nfor (const field of requiredFields) {\n  if (!(field in data)) {\n    validation.valid = false;\n    validation.errors.push(`Missing field: ${field}`);\n  }\n}\n\n// Stop immediately if required fields are missing\nif (!validation.valid) {\n  return [{\n    json: {\n      validation,\n      ai_output: data\n    }\n  }];\n}\n\n// ===============================\n// Allowed Values\n// ===============================\n\nconst allowed = {\n\n  category: [\n    \"Sales\",\n    \"Support\",\n    \"HR\",\n    \"Finance\",\n    \"Legal\",\n    \"Marketing\",\n    \"IT\",\n    \"Operations\",\n    \"Meeting\",\n    \"Spam\",\n    \"General\",\n    \"Unknown\"\n  ],\n\n  priority: [\n    \"Critical\",\n    \"High\",\n    \"Medium\",\n    \"Low\"\n  ],\n\n  urgency: [\n    \"Immediate\",\n    \"Today\",\n    \"This Week\",\n    \"No Deadline\"\n  ],\n\n  sentiment: [\n    \"Very Positive\",\n    \"Positive\",\n    \"Neutral\",\n    \"Negative\",\n    \"Very Negative\"\n  ],\n\n  language: [\n    \"English\",\n    \"Urdu\",\n    \"Mixed\",\n    \"Other\"\n  ]\n\n};\n\n// ===============================\n// Category\n// ===============================\n\nif (!allowed.category.includes(data.category)) {\n  validation.errors.push(\"Invalid category\");\n  data.category = \"Unknown\";\n}\n\n// ===============================\n// Priority\n// ===============================\n\nif (!allowed.priority.includes(data.priority)) {\n  validation.errors.push(\"Invalid priority\");\n  data.priority = \"Medium\";\n}\n\n// ===============================\n// Urgency\n// ===============================\n\nif (!allowed.urgency.includes(data.urgency)) {\n  validation.errors.push(\"Invalid urgency\");\n  data.urgency = \"No Deadline\";\n}\n\n// ===============================\n// Sentiment\n// ===============================\n\nif (!allowed.sentiment.includes(data.sentiment)) {\n  validation.errors.push(\"Invalid sentiment\");\n  data.sentiment = \"Neutral\";\n}\n\n// ===============================\n// Language\n// ===============================\n\nif (!allowed.language.includes(data.language)) {\n  validation.errors.push(\"Invalid language\");\n  data.language = \"Other\";\n}\n\n// ===============================\n// Confidence\n// ===============================\n\ndata.confidence = Number(data.confidence);\n\nif (isNaN(data.confidence)) {\n  validation.errors.push(\"Confidence is not numeric\");\n  data.confidence = 0;\n}\n\ndata.confidence = Math.max(0, Math.min(100, data.confidence));\n\n// ===============================\n// Boolean Check\n// ===============================\n\nif (typeof data.requires_human !== \"boolean\") {\n  validation.errors.push(\"requires_human is not boolean\");\n  data.requires_human = true;\n}\n\n// ===============================\n// String Checks\n// ===============================\n\nconst stringFields = [\n  \"subcategory\",\n  \"summary\",\n  \"recommended_action\",\n  \"reasoning\"\n];\n\nfor (const field of stringFields) {\n\n  if (typeof data[field] !== \"string\") {\n\n    validation.errors.push(`${field} is not a string`);\n\n    data[field] = \"\";\n  }\n\n}\n\n// ===============================\n// Word Limits\n// ===============================\n\nconst summaryWords = data.summary.trim().split(/\\s+/).filter(Boolean);\n\nif (summaryWords.length > 30) {\n  validation.warnings.push(\"Summary exceeds 30 words\");\n}\n\nconst reasoningWords = data.reasoning.trim().split(/\\s+/).filter(Boolean);\n\nif (reasoningWords.length > 40) {\n  validation.warnings.push(\"Reasoning exceeds 40 words\");\n}\n\n// ===============================\n// Validation Status\n// ===============================\n\nif (validation.errors.length > 0) {\n  validation.valid = false;\n}\n\n// ===============================\n// Return\n// ===============================\n\nreturn [{\n  json: {\n    ...data,\n    validation\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1760,
+        416
+      ],
+      "id": "15845e58-8742-480c-b89f-062bee77079c",
+      "name": "Business Validation Node"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = { ...$json };\n\nconst decision = {\n  automation_allowed: true,\n  route: \"\",\n  reason: \"\",\n  ai_recommendation: data.requires_human ?? false\n};\n\n// ===================================================\n// Rule 1 - Validation Failed\n// ===================================================\n\nif (!data.validation.valid) {\n\n  decision.automation_allowed = false;\n  decision.route = \"Human Review\";\n  decision.reason = \"Validation failed\";\n\n}\n\n// ===================================================\n// Rule 2 - Low AI Confidence\n// ===================================================\n\nelse if (data.confidence < 70) {\n\n  decision.automation_allowed = false;\n  decision.route = \"Human Review\";\n  decision.reason = \"Low AI confidence\";\n\n}\n\n// ===================================================\n// Rule 3 - Unknown Category\n// ===================================================\n\nelse if (data.category === \"Unknown\") {\n\n  decision.automation_allowed = false;\n  decision.route = \"Human Review\";\n  decision.reason = \"Unknown category\";\n\n}\n\n// ===================================================\n// Rule 4 - Legal Always Human Review\n// ===================================================\n\nelse if (data.category === \"Legal\") {\n\n  decision.automation_allowed = false;\n  decision.route = \"Human Review\";\n  decision.reason = \"Legal emails require review\";\n\n}\n\n// ===================================================\n// Rule 5 - Critical Finance Only\n// ===================================================\n\nelse if (\n    data.category === \"Finance\" &&\n    data.priority === \"Critical\"\n) {\n\n  decision.automation_allowed = false;\n  decision.route = \"Human Review\";\n  decision.reason = \"Critical financial transaction\";\n\n}\n\n  // ===================================================\n// Rule 6 - IT Security Review\n// ===================================================\n\nelse if (\n    data.category === \"IT\" &&\n    (\n        data.subcategory === \"Security\" ||\n        data.subcategory === \"Access Request\"\n    )\n) {\n\n    decision.automation_allowed = false;\n    decision.route = \"Human Review\";\n    decision.reason = \"Sensitive IT request\";\n\n}\n// ===================================================\n// Rule 7 - Spam\n// ===================================================\n\nelse if (data.category === \"Spam\") {\n\n  decision.automation_allowed = true;\n  decision.route = \"Spam\";\n  decision.reason = \"Automatic spam handling\";\n\n}\n\n// ===================================================\n// Rule 8 - Automatic Business Routing\n// ===================================================\n\n\nelse {\n\n  decision.automation_allowed = true;\n  decision.route = data.category;\n  decision.reason = \"Business policy allows automatic routing\";\n\n}\n\n// ===================================================\n// Return\n// ===================================================\n\nreturn [{\n    json: {\n        ...data,\n        decision\n    }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1840,
+        640
+      ],
+      "id": "13e4d805-d8fc-4ff4-a216-18e513c1b752",
+      "name": "Enterprise Decision Engine"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        2000,
+        784
+      ],
+      "id": "4c241dea-b9cf-4949-be16-914e6dab9614",
+      "name": "Merge2"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        1328,
+        672
+      ],
+      "id": "c09789de-6989-4587-81f3-49a0e9d96eea",
+      "name": "Google Gemini Chat Model1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "thnOcnvjIC2zdqMH",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// ==========================================\n// Enterprise JSON Parser\n// Converts LLM text output into JSON safely\n// ==========================================\n\nconst rawText = $json.text ?? \"\";\n\n// Parser result metadata\nconst parser = {\n    success: false,\n    error: \"\",\n    cleaned_text: \"\",\n    parse_time: new Date().toISOString()\n};\n\nlet cleanedText = rawText;\n\n// ==========================================\n// Remove Markdown Code Fences\n// ==========================================\n\ncleanedText = cleanedText\n    .replace(/^\\s*```json\\s*/i, \"\")\n    .replace(/^\\s*```\\s*/i, \"\")\n    .replace(/\\s*```\\s*$/i, \"\")\n    .trim();\n\nparser.cleaned_text = cleanedText;\n\n// ==========================================\n// Empty Response Check\n// ==========================================\n\nif (cleanedText.length === 0) {\n\n    parser.error = \"LLM returned an empty response.\";\n\n    return [{\n        json: {\n            parser,\n            parse_error: true,\n            validation: {\n                valid: false\n            }\n        }\n    }];\n}\n\n// ==========================================\n// JSON Parsing\n// ==========================================\n\nlet parsed;\n\ntry {\n\n    parsed = JSON.parse(cleanedText);\n\n    parser.success = true;\n\n} catch (err) {\n\n    parser.error = err.message;\n\n    return [{\n        json: {\n            parser,\n            parse_error: true,\n            validation: {\n                valid: false\n            },\n            raw_output: cleanedText\n        }\n    }];\n}\n\n// ==========================================\n// Ensure Parsed Object\n// ==========================================\n\nif (\n    parsed === null ||\n    Array.isArray(parsed) ||\n    typeof parsed !== \"object\"\n) {\n\n    return [{\n        json: {\n            parser: {\n                ...parser,\n                success: false,\n                error: \"Parsed JSON is not a valid object.\"\n            },\n            parse_error: true,\n            validation: {\n                valid: false\n            },\n            raw_output: cleanedText\n        }\n    }];\n}\n\n// ==========================================\n// Success\n// ==========================================\n\nreturn [{\n    json: {\n        ...parsed,\n        parser,\n        parse_error: false\n    }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3424,
+        208
+      ],
+      "id": "90464f66-c65d-45d4-9d45-ce6a3de974c4",
+      "name": "Enterprise JSON Parser"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = { ...$json };\n\n// =====================================================\n// Validation Object\n// =====================================================\n\nconst validation = {\n    valid: true,\n    errors: [],\n    warnings: [],\n    corrected_fields: [],\n    quality_score: 100\n};\n\n// =====================================================\n// Allowed Values\n// =====================================================\n\nconst enums = {\n\n    lead_temperature: [\n        \"Hot\",\n        \"Warm\",\n        \"Cold\"\n    ],\n\n    buying_intent: [\n        \"Very High\",\n        \"High\",\n        \"Medium\",\n        \"Low\"\n    ],\n\n    estimated_budget: [\n        \"High\",\n        \"Medium\",\n        \"Low\",\n        \"Unknown\"\n    ],\n\n    decision_maker_probability: [\n        \"Likely\",\n        \"Possible\",\n        \"Unlikely\"\n    ],\n\n    timeline: [\n        \"Immediate\",\n        \"Within 30 Days\",\n        \"1-3 Months\",\n        \"Unknown\"\n    ],\n\n    response_priority: [\n        \"Immediately\",\n        \"Within 1 Hour\",\n        \"Today\",\n        \"Tomorrow\",\n        \"This Week\"\n    ],\n\n    recommended_next_action: [\n        \"Send Proposal\",\n        \"Schedule Discovery Call\",\n        \"Book Demo\",\n        \"Request More Information\",\n        \"Assign Senior Sales\",\n        \"Follow-up\",\n        \"Archive\"\n    ]\n\n};\n\n// =====================================================\n// Helpers\n// =====================================================\n\nfunction deduct(points){\n    validation.quality_score =\n        Math.max(0, validation.quality_score - points);\n}\n\n// Normalize capitalization\n\nfunction normalize(value){\n\n    if(typeof value !== \"string\")\n        return \"\";\n\n    return value\n        .trim()\n        .toLowerCase()\n        .replace(/\\s+/g,\" \");\n}\n\n// Validate enum\n\nfunction validateEnum(field, fallback){\n\n    const allowed = enums[field];\n\n    let value = data[field];\n\n    if(typeof value !== \"string\"){\n\n        validation.warnings.push(`${field} missing`);\n\n        data[field] = fallback;\n\n        validation.corrected_fields.push(field);\n\n        deduct(5);\n\n        return;\n    }\n\n    const normalized = normalize(value);\n\n    const match = allowed.find(v =>\n        normalize(v) === normalized\n    );\n\n    if(match){\n\n        if(match !== value){\n\n            validation.corrected_fields.push(field);\n\n            deduct(1);\n\n        }\n\n        data[field] = match;\n\n        return;\n    }\n\n    validation.warnings.push(`${field} invalid`);\n\n    data[field] = fallback;\n\n    validation.corrected_fields.push(field);\n\n    deduct(5);\n\n}\n\n// Validate number\n\nfunction validateNumber(field){\n\n    let value = data[field];\n\n    if(typeof value === \"string\"){\n\n        value = parseInt(value);\n\n    }\n\n    if(isNaN(value)){\n\n        validation.errors.push(`${field} invalid`);\n\n        data[field] = 0;\n\n        validation.valid = false;\n\n        deduct(20);\n\n        return;\n    }\n\n    value = Math.max(0,Math.min(100,value));\n\n    data[field] = value;\n\n}\n\n// Validate text\n\nfunction validateText(field,fallback,maxLength){\n\n    let value = data[field];\n\n    if(typeof value !== \"string\"){\n\n        data[field]=fallback;\n\n        validation.corrected_fields.push(field);\n\n        deduct(5);\n\n        return;\n    }\n\n    value = value.trim();\n\n    if(value===\"\"){\n\n        value=fallback;\n\n        validation.corrected_fields.push(field);\n\n        deduct(5);\n\n    }\n\n    if(value.length>maxLength){\n\n        value=value.substring(0,maxLength);\n\n        validation.corrected_fields.push(field);\n\n        deduct(2);\n\n    }\n\n    data[field]=value;\n\n}\n\n// =====================================================\n// Numbers\n// =====================================================\n\nvalidateNumber(\"lead_score\");\n\nvalidateNumber(\"probability_to_close\");\n\n// =====================================================\n// Enums\n// =====================================================\n\nvalidateEnum(\n\"lead_temperature\",\n\"Cold\"\n);\n\nvalidateEnum(\n\"buying_intent\",\n\"Low\"\n);\n\nvalidateEnum(\n\"estimated_budget\",\n\"Unknown\"\n);\n\nvalidateEnum(\n\"decision_maker_probability\",\n\"Possible\"\n);\n\nvalidateEnum(\n\"timeline\",\n\"Unknown\"\n);\n\nvalidateEnum(\n\"response_priority\",\n\"This Week\"\n);\n\nvalidateEnum(\n\"recommended_next_action\",\n\"Request More Information\"\n);\n\n// =====================================================\n// Text Fields\n// =====================================================\n\nvalidateText(\n\"company\",\n\"Unknown\",\n100\n);\n\nvalidateText(\n\"project_type\",\n\"General\",\n100\n);\n\nvalidateText(\n\"reasoning\",\n\"No reasoning generated.\",\n500\n);\n\n// =====================================================\n// Business Rule Validation\n// =====================================================\n\n// Rule 1\n\nif(\ndata.lead_temperature===\"Hot\"\n&&\ndata.lead_score<70\n){\n\nvalidation.warnings.push(\n\"Hot lead has unusually low score.\"\n);\n\ndeduct(5);\n\n}\n\n// Rule 2\n\nif(\ndata.buying_intent===\"Very High\"\n&&\ndata.lead_score<70\n){\n\nvalidation.warnings.push(\n\"Very High intent but low score.\"\n);\n\ndeduct(5);\n\n}\n\n// Rule 3\n\nif(\ndata.probability_to_close>\ndata.lead_score+20\n){\n\nvalidation.warnings.push(\n\"Close probability significantly exceeds lead score.\"\n);\n\ndeduct(3);\n\n}\n\n// Rule 4\n\nif(\ndata.timeline===\"Immediate\"\n&&\ndata.buying_intent===\"Low\"\n){\n\nvalidation.warnings.push(\n\"Immediate timeline with Low buying intent.\"\n);\n\ndeduct(3);\n\n}\n\n// Rule 5\n\nif(\ndata.lead_score>=90\n&&\ndata.lead_temperature!==\"Hot\"\n){\n\nvalidation.warnings.push(\n\"Excellent lead score but lead not Hot.\"\n);\n\ndeduct(3);\n\n}\n\n// =====================================================\n// Final Quality Check\n// =====================================================\n\nif(validation.quality_score<70){\n\nvalidation.warnings.push(\n\"Low AI output quality.\"\n);\n\n}\n\n// =====================================================\n// Output\n// =====================================================\n\nreturn [\n\n{\n\njson:{\n\n...data,\n\nvalidation\n\n}\n\n}\n\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3616,
+        208
+      ],
+      "id": "d38794fe-22f1-4d10-bdd7-d374485a1e53",
+      "name": "Enterprise Sales Validation Code Node"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================================\n// SALES DECISION ENGINE V2.0 (CORE ENGINE)\n// Part 1\n// ============================================================\n\n// ------------------------------------------------------------\n// Read Input\n// ------------------------------------------------------------\n\nconst data = { ...$json };\n\n// ------------------------------------------------------------\n// Decision Object\n// ------------------------------------------------------------\n\nconst decision = {\n    engine: \"Sales Decision Engine\",\n    version: \"2.0.0\",\n    created_at: new Date().toISOString(),\n\n    ready_for_automation: true,\n    save_to_crm: true,\n\n    assigned_to: \"Sales Executive\",\n\n    status: \"New\",\n\n    priority_level: \"Low\",\n\n    severity: \"P4\",\n\n    notify_sales: false,\n\n    create_followup: false,\n\n    draft_reply: false,\n\n    escalate: false,\n\n    followup_due: \"\",\n\n    reason: []\n};\n\n// ------------------------------------------------------------\n// Helper Functions\n// ------------------------------------------------------------\n\nfunction addReason(text) {\n\n    if (!decision.reason.includes(text))\n        decision.reason.push(text);\n\n}\n\nfunction setPriority(level) {\n\n    decision.priority_level = level;\n\n    switch (level) {\n\n        case \"Critical\":\n            decision.severity = \"P1\";\n            break;\n\n        case \"High\":\n            decision.severity = \"P2\";\n            break;\n\n        case \"Medium\":\n            decision.severity = \"P3\";\n            break;\n\n        default:\n            decision.severity = \"P4\";\n\n    }\n\n}\n\nfunction assignSalesOwner() {\n\n    if (\n        data.lead_score >= 90 ||\n        data.buying_intent === \"Very High\"\n    ) {\n\n        decision.assigned_to = \"Senior Sales\";\n        addReason(\"Assigned to Senior Sales\");\n\n    }\n\n    else {\n\n        decision.assigned_to = \"Sales Executive\";\n        addReason(\"Assigned to Sales Executive\");\n\n    }\n\n}\n\nfunction determineCRMStatus() {\n\n    if (data.lead_score >= 90) {\n\n        decision.status = \"Qualified\";\n\n    }\n\n    else if (data.lead_score >= 70) {\n\n        decision.status = \"New\";\n\n    }\n\n    else if (data.lead_score >= 40) {\n\n        decision.status = \"Needs Qualification\";\n\n    }\n\n    else {\n\n        decision.status = \"Nurture\";\n\n    }\n\n    addReason(`CRM Status: ${decision.status}`);\n\n}\n\nfunction determinePriority() {\n\n    if (data.lead_score >= 90) {\n\n        setPriority(\"Critical\");\n\n    }\n\n    else if (data.lead_score >= 75) {\n\n        setPriority(\"High\");\n\n    }\n\n    else if (data.lead_score >= 50) {\n\n        setPriority(\"Medium\");\n\n    }\n\n    else {\n\n        setPriority(\"Low\");\n\n    }\n\n    addReason(`Priority: ${decision.priority_level}`);\n\n}\n\nfunction validationGate() {\n\n    if (!data.validation?.valid) {\n\n        decision.ready_for_automation = false;\n\n        decision.save_to_crm = false;\n\n        decision.notify_sales = false;\n\n        decision.create_followup = false;\n\n        decision.draft_reply = false;\n\n        decision.escalate = false;\n\n        decision.assigned_to = \"Human Review\";\n\n        decision.status = \"Validation Failed\";\n\n        setPriority(\"Low\");\n\n        addReason(\"Validation failed\");\n\n        return false;\n\n    }\n\n    return true;\n\n}\n\n// ------------------------------------------------------------\n// Execute Validation First\n// ------------------------------------------------------------\n\nif (!validationGate()) {\n\n    return [{\n        json: {\n            ...data,\n            decision\n        }\n    }];\n\n}\n\n// ------------------------------------------------------------\n// Owner Assignment\n// ------------------------------------------------------------\n\nassignSalesOwner();\n\n// ------------------------------------------------------------\n// CRM Status\n// ------------------------------------------------------------\n\ndetermineCRMStatus();\n\n// ------------------------------------------------------------\n// Priority\n// ------------------------------------------------------------\n\ndeterminePriority();\n\n// ------------------------------------------------------------\n// Notification Rules\n// ------------------------------------------------------------\n\nif (\n\n    data.lead_temperature === \"Hot\"\n\n    ||\n\n    data.buying_intent === \"Very High\"\n\n    ||\n\n    data.response_priority === \"Immediately\"\n\n    ||\n\n    data.lead_score >= 85\n\n) {\n\n    decision.notify_sales = true;\n\n    addReason(\"Sales notification required\");\n\n}\n\n// ------------------------------------------------------------\n// Draft Reply Rules\n// ------------------------------------------------------------\n\nif (\n\n    data.validation.valid\n\n    &&\n\n    data.lead_score >= 70\n\n) {\n\n    decision.draft_reply = true;\n\n    addReason(\"AI Draft Reply\");\n\n}\n\n// ------------------------------------------------------------\n// Follow-up Rules\n// ------------------------------------------------------------\n\nif (data.lead_score >= 60) {\n\n    decision.create_followup = true;\n\n    addReason(\"Follow-up required\");\n\n}\n\n// ------------------------------------------------------------\n// Escalation Rules\n// ------------------------------------------------------------\n\nif (\n\n    (\n        data.estimated_budget === \"High\" &&\n        data.probability_to_close >= 80\n    )\n\n    ||\n\n    data.lead_score >= 95\n\n    ||\n\n    data.timeline === \"Immediate\"\n\n) {\n\n    decision.escalate = true;\n\n    addReason(\"Escalation required\");\n\n}\n\n// ------------------------------------------------------------\n// Follow-up Scheduling\n// ------------------------------------------------------------\n\nif (decision.create_followup) {\n\n    const followup = new Date();\n\n    switch (data.response_priority) {\n\n        case \"Immediately\":\n\n            followup.setHours(\n                followup.getHours() + 1\n            );\n\n            break;\n\n        case \"Within 1 Hour\":\n\n            followup.setHours(\n                followup.getHours() + 1\n            );\n\n            break;\n\n        case \"Today\":\n\n            followup.setHours(\n                followup.getHours() + 8\n            );\n\n            break;\n\n        case \"Tomorrow\":\n\n            followup.setDate(\n                followup.getDate() + 1\n            );\n\n            break;\n\n        default:\n\n            followup.setDate(\n                followup.getDate() + 7\n            );\n\n    }\n\n    decision.followup_due = followup.toISOString();\n\n}\n\n// ------------------------------------------------------------\n// Automation Readiness\n// ------------------------------------------------------------\n\ndecision.ready_for_automation = (\n\n    decision.save_to_crm\n\n    &&\n\n    data.validation.valid\n\n);\n\n// ------------------------------------------------------------\n// Decision Summary\n// ------------------------------------------------------------\n\naddReason(`Lead Score: ${data.lead_score}`);\n\naddReason(`Lead Temperature: ${data.lead_temperature}`);\n\naddReason(`Buying Intent: ${data.buying_intent}`);\n\naddReason(`Estimated Budget: ${data.estimated_budget}`);\n\naddReason(`Timeline: ${data.timeline}`);\n\naddReason(\n    `Probability to Close: ${data.probability_to_close}%`\n);\n\naddReason(\n    `Assigned To: ${decision.assigned_to}`\n);\n\n// ------------------------------------------------------------\n// Recommendation\n// ------------------------------------------------------------\n\ndecision.recommended_workflow = {\n\n    create_airtable_record:\n        decision.save_to_crm,\n\n    notify_sales_team:\n        decision.notify_sales,\n\n    create_followup_task:\n        decision.create_followup,\n\n    create_email_draft:\n        decision.draft_reply,\n\n    escalate:\n        decision.escalate\n\n};\n\n// ------------------------------------------------------------\n// Audit Information\n// ------------------------------------------------------------\n\ndecision.audit = {\n\n    engine: decision.engine,\n\n    version: decision.version,\n\n    processed_at: decision.created_at,\n\n    automation_ready:\n        decision.ready_for_automation\n\n};\n\n// ------------------------------------------------------------\n// Output\n// ------------------------------------------------------------\n\nreturn [\n\n{\n\n    json: {\n\n        ...data,\n\n        decision\n\n    }\n\n}\n\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3808,
+        208
+      ],
+      "id": "1571a2b4-c392-477f-8349-dc454def8253",
+      "name": "Sales Decision Core Engine V2.0"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = { ...$json };\n\n// =======================================\n// Configuration\n// =======================================\n\nconst CONFIG = {\n\n    businessStart: 9,\n\n    businessEnd: 18,\n\n    timezone: \"UTC\"\n\n};\n\n// =======================================\n// Current Time\n// =======================================\n\nconst now = new Date();\n\nconst hour = now.getHours();\n\nconst day = now.getDay();\n\n// Sunday=0 Saturday=6\n\nconst weekend = (\n    day === 0 ||\n    day === 6\n);\n\nconst businessHours =\n    hour >= CONFIG.businessStart &&\n    hour < CONFIG.businessEnd;\n\nconst dayNames = [\n    \"Sunday\",\n    \"Monday\",\n    \"Tuesday\",\n    \"Wednesday\",\n    \"Thursday\",\n    \"Friday\",\n    \"Saturday\"\n];\n\n// =======================================\n// Environment Object\n// =======================================\n\nconst environment = {\n\n    timestamp: now.toISOString(),\n\n    day_name: dayNames[day],\n\n    hour,\n\n    weekend,\n\n    business_hours: businessHours,\n\n    office_open:\n        businessHours && !weekend,\n\n    business_day: !weekend,\n\n    timezone: CONFIG.timezone\n\n};\n\n// =======================================\n// Output\n// =======================================\n\nreturn [{\n    json: {\n        ...data,\n        environment\n    }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3808,
+        432
+      ],
+      "id": "6266f52f-e38f-4a34-a6e5-c0d9aa2d46d7",
+      "name": "Advanced Rules Engine 2.1A Environment Analyzer (time, weekend, business hours)"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = { ...$json };\n\n//======================================================\n// CONFIGURATION\n//======================================================\n\nconst FREE_EMAIL_DOMAINS = [\n\n\"gmail.com\",\n\"googlemail.com\",\n\"yahoo.com\",\n\"ymail.com\",\n\"rocketmail.com\",\n\"hotmail.com\",\n\"outlook.com\",\n\"live.com\",\n\"msn.com\",\n\"icloud.com\",\n\"me.com\",\n\"mac.com\",\n\"aol.com\",\n\"zoho.com\",\n\"proton.me\",\n\"protonmail.com\",\n\"mail.com\",\n\"gmx.com\",\n\"gmx.net\",\n\"yandex.com\",\n\"yandex.ru\",\n\"qq.com\",\n\"163.com\",\n\"126.com\",\n\"rediffmail.com\"\n\n];\n\n//======================================================\n// READ EMAIL\n//======================================================\n\nconst email =\n(\ndata.sender_email ||\ndata.from_email ||\n\"\"\n)\n.trim()\n.toLowerCase();\n\nlet domain = \"\";\n\nif(email.includes(\"@\"))\n    domain = email.split(\"@\")[1];\n\n//======================================================\n// HELPERS\n//======================================================\n\nfunction endsWithAny(value,list){\n\n    return list.some(x=>value.endsWith(x));\n\n}\n\n//======================================================\n// FLAGS\n//======================================================\n\nconst freeEmail =\nFREE_EMAIL_DOMAINS.includes(domain);\n\nconst government =\ndomain.endsWith(\".gov\") ||\ndomain.endsWith(\".gov.pk\");\n\nconst education =\ndomain.endsWith(\".edu\") ||\ndomain.endsWith(\".edu.pk\") ||\ndomain.endsWith(\".ac.uk\") ||\ndomain.endsWith(\".edu.au\");\n\nconst nonprofit =\ndomain.endsWith(\".org\");\n\nconst corporate =\n!(\nfreeEmail ||\ngovernment ||\neducation ||\nnonprofit ||\ndomain === \"\"\n);\n\n//======================================================\n// Sender Type\n//======================================================\n\nlet senderType=\"Unknown\";\n\nif(freeEmail)\n    senderType=\"Personal\";\n\nelse if(government)\n    senderType=\"Government\";\n\nelse if(education)\n    senderType=\"Education\";\n\nelse if(nonprofit)\n    senderType=\"Nonprofit\";\n\nelse if(corporate)\n    senderType=\"Corporate\";\n\n//======================================================\n// Organization\n//======================================================\n\nlet organization=\"Unknown\";\n\nif(domain){\n\n    organization=\n    domain.split(\".\")[0];\n\n}\n\n//======================================================\n// Country Domain\n//======================================================\n\nlet country=\"Global\";\n\nif(domain.endsWith(\".pk\"))\n    country=\"Pakistan\";\n\nelse if(domain.endsWith(\".uk\"))\n    country=\"United Kingdom\";\n\nelse if(domain.endsWith(\".au\"))\n    country=\"Australia\";\n\nelse if(domain.endsWith(\".ca\"))\n    country=\"Canada\";\n\nelse if(domain.endsWith(\".in\"))\n    country=\"India\";\n\nelse if(domain.endsWith(\".de\"))\n    country=\"Germany\";\n\n//======================================================\n// Website\n//======================================================\n\nlet website=\"\";\n\nif(corporate){\n\n    website=`https://${domain}`;\n\n}\n\n//======================================================\n// Quality\n//======================================================\n\nlet quality=\"Unknown\";\n\nif(corporate)\n    quality=\"Excellent\";\n\nelse if(government)\n    quality=\"Excellent\";\n\nelse if(education)\n    quality=\"Very Good\";\n\nelse if(nonprofit)\n    quality=\"Good\";\n\nelse if(freeEmail)\n    quality=\"Normal\";\n\n//======================================================\n// OUTPUT\n//======================================================\n\nconst sender_intelligence={\n\nemail,\n\ndomain,\n\norganization,\n\ntop_level_domain:\ndomain.split(\".\").pop() || \"\",\n\nsender_type:senderType,\n\nfree_email:freeEmail,\n\ncorporate_email:corporate,\n\ngovernment,\n\neducation,\n\nnonprofit,\n\ncountry_domain:country,\n\nwebsite,\n\nquality\n\n};\n\nreturn[{\n\njson:{\n\n...data,\n\nsender_intelligence\n\n}\n\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3760,
+        992
+      ],
+      "id": "0fc83ae8-159b-422f-89ca-2168a40b4a43",
+      "name": "Advanced Rules Engine 2.1B Sender Intelligence (email, company, domain, reputation)"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = { ...$json };\n\n//====================================================\n// CONFIGURATION\n//====================================================\n\nconst SCORE_RULES = {\n\n    corporate_email: 5,\n\n    government: 8,\n\n    education: 3,\n\n    nonprofit: 2,\n\n    free_email: -5,\n\n    high_budget: 10,\n\n    medium_budget: 5,\n\n    immediate_timeline: 10,\n\n    within30: 5,\n\n    decision_maker_likely: 10,\n\n    decision_maker_possible: 4,\n\n    very_high_intent: 12,\n\n    high_intent: 6,\n\n    weekend: -2,\n\n    outside_business_hours: -2\n\n};\n\n//====================================================\n// Initial Values\n//====================================================\n\nconst score = Number(data.lead_score) || 0;\n\nconst probability =\nNumber(data.probability_to_close) || 0;\n\nlet adjustment = 0;\n\nconst reasons = [];\n\n//====================================================\n// Sender Intelligence\n//====================================================\n\nconst sender = data.sender_intelligence || {};\n\nif(sender.corporate_email){\n\n    adjustment += SCORE_RULES.corporate_email;\n\n    reasons.push(\"+5 Corporate Email\");\n\n}\n\nif(sender.government){\n\n    adjustment += SCORE_RULES.government;\n\n    reasons.push(\"+8 Government\");\n\n}\n\nif(sender.education){\n\n    adjustment += SCORE_RULES.education;\n\n    reasons.push(\"+3 Education\");\n\n}\n\nif(sender.nonprofit){\n\n    adjustment += SCORE_RULES.nonprofit;\n\n    reasons.push(\"+2 Nonprofit\");\n\n}\n\nif(sender.free_email){\n\n    adjustment += SCORE_RULES.free_email;\n\n    reasons.push(\"-5 Free Email\");\n\n}\n\n//====================================================\n// Budget\n//====================================================\n\nswitch(data.estimated_budget){\n\ncase \"High\":\n\nadjustment += SCORE_RULES.high_budget;\n\nreasons.push(\"+10 High Budget\");\n\nbreak;\n\ncase \"Medium\":\n\nadjustment += SCORE_RULES.medium_budget;\n\nreasons.push(\"+5 Medium Budget\");\n\nbreak;\n\n}\n\n//====================================================\n// Timeline\n//====================================================\n\nswitch(data.timeline){\n\ncase \"Immediate\":\n\nadjustment += SCORE_RULES.immediate_timeline;\n\nreasons.push(\"+10 Immediate\");\n\nbreak;\n\ncase \"Within 30 Days\":\n\nadjustment += SCORE_RULES.within30;\n\nreasons.push(\"+5 Within 30 Days\");\n\nbreak;\n\n}\n\n//====================================================\n// Buying Intent\n//====================================================\n\nswitch(data.buying_intent){\n\ncase \"Very High\":\n\nadjustment += SCORE_RULES.very_high_intent;\n\nreasons.push(\"+12 Very High Intent\");\n\nbreak;\n\ncase \"High\":\n\nadjustment += SCORE_RULES.high_intent;\n\nreasons.push(\"+6 High Intent\");\n\nbreak;\n\n}\n\n//====================================================\n// Decision Maker\n//====================================================\n\nswitch(data.decision_maker_probability){\n\ncase \"Likely\":\n\nadjustment += SCORE_RULES.decision_maker_likely;\n\nreasons.push(\"+10 Decision Maker\");\n\nbreak;\n\ncase \"Possible\":\n\nadjustment += SCORE_RULES.decision_maker_possible;\n\nreasons.push(\"+4 Possible Decision Maker\");\n\nbreak;\n\n}\n\n//====================================================\n// Environment\n//====================================================\n\nconst env = data.environment || {};\n\nif(env.weekend){\n\nadjustment += SCORE_RULES.weekend;\n\nreasons.push(\"-2 Weekend\");\n\n}\n\nif(env.business_hours===false){\n\nadjustment += SCORE_RULES.outside_business_hours;\n\nreasons.push(\"-2 Outside Business Hours\");\n\n}\n\n//====================================================\n// Final Scores\n//====================================================\n\nconst adjustedScore =\nMath.max(\n0,\nMath.min(\n100,\nscore + adjustment\n)\n);\n\nconst adjustedProbability =\nMath.max(\n0,\nMath.min(\n100,\nprobability + Math.round(adjustment/2)\n)\n);\n\n//====================================================\n// Business Tier\n//====================================================\n\nlet tier=\"Tier D\";\n\nif(adjustedScore>=90)\ntier=\"Tier A\";\n\nelse if(adjustedScore>=75)\ntier=\"Tier B\";\n\nelse if(adjustedScore>=50)\ntier=\"Tier C\";\n\n//====================================================\n// SLA\n//====================================================\n\nlet sla=\"This Week\";\n\nif(tier===\"Tier A\")\nsla=\"1 Hour\";\n\nelse if(tier===\"Tier B\")\nsla=\"4 Hours\";\n\nelse if(tier===\"Tier C\")\nsla=\"Today\";\n\n//====================================================\n// Recommended Owner\n//====================================================\n\nlet owner=\"Sales Executive\";\n\nif(tier===\"Tier A\")\nowner=\"Senior Sales\";\n\nelse if(tier===\"Tier B\")\nowner=\"Account Executive\";\n\nelse if(tier===\"Tier C\")\nowner=\"Sales Development Representative\";\n\n//====================================================\n// Output\n//====================================================\n\nconst score_optimizer={\n\noriginal_score:score,\n\nscore_adjustment:adjustment,\n\nadjusted_score:adjustedScore,\n\noriginal_probability_to_close:probability,\n\nadjusted_probability_to_close:adjustedProbability,\n\nbusiness_tier:tier,\n\nrecommended_owner:owner,\n\nrecommended_sla:sla,\n\nadjustment_reasons:reasons\n\n};\n\nreturn[{\n\njson:{\n\n...data,\n\nscore_optimizer\n\n}\n\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3984,
+        784
+      ],
+      "id": "98d469ef-14a5-43f3-9afb-c80fac6e660d",
+      "name": "Advanced Rules Engine 2.1C Score Optimizer (adjustments, SLA, owner recommendation)"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = { ...$json };\n\n//=====================================\n// Configuration\n//=====================================\n\nconst CONFIG = {\n\nVIP_EMAILS: [\n\n\"ceo@company.com\",\n\n\"cto@company.com\"\n\n],\n\nVIP_DOMAINS: [\n\n\"microsoft.com\",\n\n\"google.com\",\n\n\"amazon.com\"\n\n],\n\nBLACKLIST: [\n\n\"spamdomain.com\",\n\n\"fakecompany.xyz\"\n\n],\n\nINTERNAL_DOMAINS: [\n\n\"mycompany.com\"\n\n],\n\nTRUSTED_DOMAINS: [\n\n\"microsoft.com\",\n\n\"google.com\",\n\n\"ibm.com\",\n\n\"oracle.com\",\n\n\"adobe.com\"\n\n]\n\n};\n\n//=====================================\n// Read Email\n//=====================================\n\nconst email =\n(\ndata.sender_email ||\ndata.from_email ||\n\"\"\n).toLowerCase();\n\nconst domain =\nemail.includes(\"@\")\n?\nemail.split(\"@\")[1]\n:\n\"\";\n\n//=====================================\n// Enterprise Object\n//=====================================\n\nconst enterprise={\n\nvip_customer:false,\n\nexisting_customer:false,\n\ntrusted_sender:false,\n\nblacklisted_sender:false,\n\ninternal_sender:false,\n\npolicy_passed:true,\n\nescalation_required:false,\n\npolicy_reason:[]\n\n};\n\n//=====================================\n// VIP Email\n//=====================================\n\nif(CONFIG.VIP_EMAILS.includes(email)){\n\nenterprise.vip_customer=true;\n\nenterprise.escalation_required=true;\n\nenterprise.policy_reason.push(\n\"VIP customer email\"\n);\n\n}\n\n//=====================================\n// VIP Domain\n//=====================================\n\nif(CONFIG.VIP_DOMAINS.includes(domain)){\n\nenterprise.vip_customer=true;\n\nenterprise.policy_reason.push(\n\"VIP organization\"\n);\n\n}\n\n//=====================================\n// Trusted Domain\n//=====================================\n\nif(CONFIG.TRUSTED_DOMAINS.includes(domain)){\n\nenterprise.trusted_sender=true;\n\nenterprise.policy_reason.push(\n\"Trusted organization\"\n);\n\n}\n\n//=====================================\n// Internal Email\n//=====================================\n\nif(CONFIG.INTERNAL_DOMAINS.includes(domain)){\n\nenterprise.internal_sender=true;\n\nenterprise.policy_reason.push(\n\"Internal sender\"\n);\n\n}\n\n//=====================================\n// Blacklist\n//=====================================\n\nif(CONFIG.BLACKLIST.includes(domain)){\n\nenterprise.blacklisted_sender=true;\n\nenterprise.policy_passed=false;\n\nenterprise.escalation_required=true;\n\nenterprise.policy_reason.push(\n\"Blacklisted sender\"\n);\n\n}\n\n//=====================================\n// High Score Rule\n//=====================================\n\nconst score =\ndata.score_optimizer?.adjusted_score\n??\ndata.lead_score\n??\n0;\n\nif(score>=95){\n\nenterprise.escalation_required=true;\n\nenterprise.policy_reason.push(\n\"Enterprise lead\"\n);\n\n}\n\n//=====================================\n// Output\n//=====================================\n\nreturn [{\n\njson:{\n\n...data,\n\nenterprise_policy:enterprise\n\n}\n\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4144,
+        544
+      ],
+      "id": "22575e96-717e-4282-8f66-f478b19e38a0",
+      "name": "Enterprise Policy Engine V2.2A Organization Policies"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = { ...$json };\n\n//======================================\n// Configuration\n//======================================\n\nconst CONFIG = {\n\n    BUSINESS_START: 9,\n\n    BUSINESS_END: 18,\n\n    COUNTRY_TEAMS: {\n\n        Pakistan: \"Pakistan Sales\",\n\n        India: \"India Sales\",\n\n        USA: \"North America\",\n\n        Canada: \"North America\",\n\n        Germany: \"Europe\",\n\n        \"United Kingdom\": \"Europe\",\n\n        Australia: \"Australia\",\n\n        Global: \"International\"\n\n    },\n\n    SLA: {\n\n        \"Tier A\": 1,\n\n        \"Tier B\": 4,\n\n        \"Tier C\": 8,\n\n        \"Tier D\": 24\n\n    }\n\n};\n\n//======================================\n// Read Existing Data\n//======================================\n\nconst environment =\ndata.environment || {};\n\nconst sender =\ndata.sender_intelligence || {};\n\nconst score =\ndata.score_optimizer || {};\n\nconst routing = {\n\n    sales_region: sender.country_domain || \"Global\",\n\n    assigned_team: \"\",\n\n    assigned_owner: \"\",\n\n    queue: \"Standard\",\n\n    sla_hours: 24,\n\n    notify_manager: false,\n\n    business_open:\n        environment.office_open || false,\n\n    routing_reason: []\n\n};\n\n//======================================\n// Region\n//======================================\n\nrouting.assigned_team =\nCONFIG.COUNTRY_TEAMS[\nrouting.sales_region\n] || \"International\";\n\n//======================================\n// Owner\n//======================================\n\nswitch(score.business_tier){\n\ncase \"Tier A\":\n\nrouting.assigned_owner =\n\"Senior Sales\";\n\nbreak;\n\ncase \"Tier B\":\n\nrouting.assigned_owner =\n\"Account Executive\";\n\nbreak;\n\ncase \"Tier C\":\n\nrouting.assigned_owner =\n\"Sales Representative\";\n\nbreak;\n\ndefault:\n\nrouting.assigned_owner =\n\"Inside Sales\";\n\n}\n\n//======================================\n// Queue\n//======================================\n\nswitch(score.business_tier){\n\ncase \"Tier A\":\n\nrouting.queue = \"Enterprise\";\n\nrouting.notify_manager = true;\n\nbreak;\n\ncase \"Tier B\":\n\nrouting.queue = \"Priority\";\n\nbreak;\n\ncase \"Tier C\":\n\nrouting.queue = \"Standard\";\n\nbreak;\n\ndefault:\n\nrouting.queue = \"Low Priority\";\n\n}\n\n//======================================\n// SLA\n//======================================\n\nrouting.sla_hours =\nCONFIG.SLA[\nscore.business_tier\n] || 24;\n\n//======================================\n// Business Hours\n//======================================\n\nif(!routing.business_open){\n\nrouting.routing_reason.push(\n\"Outside business hours\"\n);\n\n}\n\nrouting.routing_reason.push(\n`Region: ${routing.sales_region}`\n);\n\nrouting.routing_reason.push(\n`Queue: ${routing.queue}`\n);\n\nrouting.routing_reason.push(\n`Owner: ${routing.assigned_owner}`\n);\n\nrouting.routing_reason.push(\n`SLA ${routing.sla_hours} hour(s)`\n);\n\n//======================================\n// Output\n//======================================\n\nreturn [{\n\njson:{\n\n...data,\n\nrouting_policy:routing\n\n}\n\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4352,
+        256
+      ],
+      "id": "105ec5f8-e3b9-409e-850b-1b9443fc1969",
+      "name": "Enterprise Policy Engine V2.2B Routing Policies"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        3760,
+        704
+      ],
+      "id": "c425bcc1-8dda-469f-993f-96f501b1941c",
+      "name": "Merge3"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = { ...$json };\n\n//====================================================\n// Configuration\n//====================================================\n\nconst HIGH_RISK_DOMAINS = [\n\n\"tempmail.com\",\n\"mailinator.com\",\n\"10minutemail.com\",\n\"guerrillamail.com\"\n\n];\n\nconst EXECUTIVE_SCORE = 95;\n\n//====================================================\n// Compliance Object\n//====================================================\n\nconst compliance = {\n\nrisk_score:0,\n\nrisk_level:\"Very Low\",\n\nduplicate_lead:false,\n\nexecutive_notification:false,\n\nmanual_review:false,\n\nautomation_blocked:false,\n\nflags:[]\n\n};\n\n//====================================================\n// Sender Intelligence\n//====================================================\n\nconst sender =\ndata.sender_intelligence || {};\n\nconst email =\nsender.email || \"\";\n\nconst domain =\nsender.domain || \"\";\n\n//====================================================\n// Free Email\n//====================================================\n\nif(sender.free_email){\n\ncompliance.risk_score += 10;\n\ncompliance.flags.push(\n\"Free Email Provider\"\n);\n\n}\n\n//====================================================\n// Temporary Email\n//====================================================\n\nif(HIGH_RISK_DOMAINS.includes(domain)){\n\ncompliance.risk_score += 35;\n\ncompliance.flags.push(\n\"Temporary Email\"\n);\n\n}\n\n//====================================================\n// Unknown Company\n//====================================================\n\nif(data.company===\"Unknown\"){\n\ncompliance.risk_score += 10;\n\ncompliance.flags.push(\n\"Unknown Company\"\n);\n\n}\n\n//====================================================\n// Unknown Budget\n//====================================================\n\nif(data.estimated_budget===\"Unknown\"){\n\ncompliance.risk_score += 5;\n\ncompliance.flags.push(\n\"Unknown Budget\"\n);\n\n}\n\n//====================================================\n// Unknown Timeline\n//====================================================\n\nif(data.timeline===\"Unknown\"){\n\ncompliance.risk_score += 5;\n\ncompliance.flags.push(\n\"Unknown Timeline\"\n);\n\n}\n\n//====================================================\n// Legal Category\n//====================================================\n\nif(data.category===\"Legal\"){\n\ncompliance.manual_review=true;\n\ncompliance.flags.push(\n\"Legal Review Required\"\n);\n\n}\n\n//====================================================\n// Finance Critical\n//====================================================\n\nif(\n\ndata.category===\"Finance\"\n\n&&\n\ndata.priority===\"Critical\"\n\n){\n\ncompliance.manual_review=true;\n\ncompliance.flags.push(\n\"Critical Finance\"\n);\n\n}\n\n//====================================================\n// Enterprise Lead\n//====================================================\n\nconst adjusted =\ndata.score_optimizer?.adjusted_score || 0;\n\nif(adjusted>=EXECUTIVE_SCORE){\n\ncompliance.executive_notification=true;\n\ncompliance.flags.push(\n\"Enterprise Opportunity\"\n);\n\n}\n\n//====================================================\n// Existing Enterprise Policy\n//====================================================\n\nif(\n\ndata.enterprise_policy?.blacklisted_sender\n\n){\n\ncompliance.automation_blocked=true;\n\ncompliance.manual_review=true;\n\ncompliance.risk_score+=50;\n\ncompliance.flags.push(\n\"Blacklisted Sender\"\n);\n\n}\n\n//====================================================\n// Risk Level\n//====================================================\n\nconst score =\nMath.min(\n100,\ncompliance.risk_score\n);\n\ncompliance.risk_score=score;\n\nif(score>=81)\n\ncompliance.risk_level=\"Critical\";\n\nelse if(score>=61)\n\ncompliance.risk_level=\"High\";\n\nelse if(score>=41)\n\ncompliance.risk_level=\"Medium\";\n\nelse if(score>=21)\n\ncompliance.risk_level=\"Low\";\n\nelse\n\ncompliance.risk_level=\"Very Low\";\n\n//====================================================\n// High Risk Rule\n//====================================================\n\nif(\n\ncompliance.risk_level===\"Critical\"\n\n||\n\ncompliance.risk_level===\"High\"\n\n){\n\ncompliance.manual_review=true;\n\n}\n\n//====================================================\n// Output\n//====================================================\n\nreturn [{\n\njson:{\n\n...data,\n\ncompliance_risk:compliance\n\n}\n\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4608,
+        -16
+      ],
+      "id": "80811243-587d-4a12-ad80-b06686d74f84",
+      "name": "Enterprise Policy Engine 2.2C – Compliance & Risk"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = { ...$json };\n\n//================================================\n// Execution Plan\n//================================================\n\nconst executionPlan = {\n    version: \"1.0\",\n    created_at: new Date().toISOString(),\n    jobs: [],\n    statistics: {\n        total_jobs: 0,\n        critical: 0,\n        high: 0,\n        medium: 0,\n        low: 0\n    },\n    metadata: {\n        lead_score: data.lead_score,\n        category: data.category,\n        business_tier: data.score_optimizer?.business_tier || \"Tier D\",\n        assigned_team: data.routing_policy?.assigned_team || \"Unknown\",\n        automation_allowed: !data.compliance_risk?.automation_blocked\n    }\n};\n\n//================================================\n// Helper Function\n//================================================\n\nfunction addJob(type, action, priority, payload = {}, reason = \"\") {\n\n    executionPlan.jobs.push({\n        id: executionPlan.jobs.length + 1,\n        type,\n        action,\n        priority,\n        enabled: true,\n        payload,\n        reason\n    });\n\n    executionPlan.statistics.total_jobs++;\n\n    switch(priority){\n\n        case \"CRITICAL\":\n            executionPlan.statistics.critical++;\n            break;\n\n        case \"HIGH\":\n            executionPlan.statistics.high++;\n            break;\n\n        case \"MEDIUM\":\n            executionPlan.statistics.medium++;\n            break;\n\n        default:\n            executionPlan.statistics.low++;\n    }\n}\n\n//================================================\n// Stop if automation blocked\n//================================================\n\nif(data.compliance_risk?.automation_blocked){\n\n    addJob(\n        \"AUDIT\",\n        \"LOG_BLOCKED_EMAIL\",\n        \"HIGH\",\n        {},\n        \"Automation blocked by compliance\"\n    );\n\n    return [{\n        json:{\n            ...data,\n            execution_plan:executionPlan\n        }\n    }];\n}\n\n//================================================\n// CRM\n//================================================\n\naddJob(\n    \"CRM\",\n    \"CREATE_OR_UPDATE_LEAD\",\n    \"HIGH\",\n    {},\n    \"Store lead in CRM\"\n);\n\n//================================================\n// Notification\n//================================================\n\nif(data.decision?.notify_sales){\n\n    addJob(\n        \"NOTIFICATION\",\n        \"NOTIFY_SALES_TEAM\",\n        \"HIGH\",\n        {},\n        \"Hot lead\"\n    );\n\n}\n\n//================================================\n// Manager\n//================================================\n\nif(data.routing_policy?.notify_manager){\n\n    addJob(\n        \"NOTIFICATION\",\n        \"NOTIFY_MANAGER\",\n        \"HIGH\",\n        {},\n        \"Enterprise opportunity\"\n    );\n\n}\n\n//================================================\n// Follow-up\n//================================================\n\nif(data.decision?.create_followup){\n\n    addJob(\n        \"TASK\",\n        \"CREATE_FOLLOWUP\",\n        \"MEDIUM\",\n        {},\n        \"Sales follow-up\"\n    );\n\n}\n\n//================================================\n// AI Reply\n//================================================\n\nif(data.decision?.draft_reply){\n\n    addJob(\n        \"AI_REPLY\",\n        \"GENERATE_REPLY\",\n        \"MEDIUM\",\n        {},\n        \"Generate first draft\"\n    );\n\n}\n\n//================================================\n// Calendar\n//================================================\n\nif(\ndata.recommended_next_action ===\n\"Schedule Discovery Call\"\n){\n\n    addJob(\n        \"CALENDAR\",\n        \"CREATE_MEETING\",\n        \"HIGH\",\n        {},\n        \"Discovery call\"\n    );\n\n}\n\n//================================================\n// Audit\n//================================================\n\naddJob(\n    \"AUDIT\",\n    \"WRITE_AUDIT_LOG\",\n    \"LOW\",\n    {},\n    \"Workflow completed\"\n);\n\n//================================================\n// Analytics\n//================================================\n\naddJob(\n    \"ANALYTICS\",\n    \"STORE_ANALYTICS\",\n    \"LOW\",\n    {},\n    \"Metrics collection\"\n);\n\n//================================================\n// Output\n//================================================\n\nreturn [{\n    json:{\n        ...data,\n        execution_plan:executionPlan\n    }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4624,
+        256
+      ],
+      "id": "3b9805d2-a4b1-4ff7-b7be-6117250ed229",
+      "name": "Execution Planner"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = { ...$json };\n\n//================================================\n// Validator\n//================================================\n\nconst validation = {\n    valid: true,\n    blocked: false,\n    errors: [],\n    warnings: [],\n    enabled_jobs: 0,\n    disabled_jobs: 0\n};\n\nconst plan = data.execution_plan;\n\n//================================================\n// Execution Plan Exists\n//================================================\n\nif (!plan || typeof plan !== \"object\") {\n\n    validation.valid = false;\n    validation.blocked = true;\n    validation.errors.push(\"Execution plan missing.\");\n\n    return [{\n        json: {\n            ...data,\n            execution_validation: validation\n        }\n    }];\n}\n\n//================================================\n// Jobs Array\n//================================================\n\nif (!Array.isArray(plan.jobs)) {\n\n    validation.valid = false;\n    validation.blocked = true;\n    validation.errors.push(\"Jobs array missing.\");\n\n    return [{\n        json: {\n            ...data,\n            execution_validation: validation\n        }\n    }];\n}\n\n//================================================\n// Allowed Values\n//================================================\n\nconst JOB_TYPES = [\n    \"CRM\",\n    \"EMAIL\",\n    \"AI_REPLY\",\n    \"NOTIFICATION\",\n    \"TASK\",\n    \"CALENDAR\",\n    \"ANALYTICS\",\n    \"AUDIT\"\n];\n\nconst PRIORITIES = [\n    \"CRITICAL\",\n    \"HIGH\",\n    \"MEDIUM\",\n    \"LOW\"\n];\n\n//================================================\n// Validate Every Job\n//================================================\n\nfor (const job of plan.jobs) {\n\n    let enabled = true;\n\n    if (!JOB_TYPES.includes(job.type)) {\n\n        enabled = false;\n\n        validation.errors.push(\n            `Invalid job type: ${job.type}`\n        );\n    }\n\n    if (\n        typeof job.action !== \"string\" ||\n        job.action.trim() === \"\"\n    ) {\n\n        enabled = false;\n\n        validation.errors.push(\n            `Missing action in Job ${job.id}`\n        );\n    }\n\n    if (!PRIORITIES.includes(job.priority)) {\n\n        enabled = false;\n\n        validation.errors.push(\n            `Invalid priority in Job ${job.id}`\n        );\n    }\n\n    if (typeof job.payload !== \"object\") {\n\n        enabled = false;\n\n        validation.errors.push(\n            `Payload missing in Job ${job.id}`\n        );\n    }\n\n    job.enabled = enabled;\n\n    if (enabled)\n        validation.enabled_jobs++;\n    else\n        validation.disabled_jobs++;\n}\n\n//================================================\n// Required Business Data\n//================================================\n\nif (\n    !data.sender_email &&\n    !data.from_email\n) {\n\n    validation.warnings.push(\n        \"Sender email missing.\"\n    );\n}\n\nif (\n    typeof data.lead_score !== \"number\"\n) {\n\n    validation.warnings.push(\n        \"Lead score missing.\"\n    );\n}\n\n//================================================\n// Compliance Check\n//================================================\n\nif (\n    data.compliance_risk?.automation_blocked\n) {\n\n    validation.blocked = true;\n\n    validation.valid = false;\n\n    validation.errors.push(\n        \"Automation blocked by compliance.\"\n    );\n}\n\n//================================================\n// All Jobs Disabled\n//================================================\n\nif (\n    validation.enabled_jobs === 0\n) {\n\n    validation.valid = false;\n\n    validation.blocked = true;\n\n    validation.errors.push(\n        \"No executable jobs remain.\"\n    );\n}\n\n//================================================\n// Summary\n//================================================\n\nvalidation.summary = `${validation.enabled_jobs} enabled, ${validation.disabled_jobs} disabled jobs.`;\n\n//================================================\n// Output\n//================================================\n\nreturn [{\n    json: {\n        ...data,\n        execution_validation: validation\n    }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4624,
+        464
+      ],
+      "id": "a209c2c5-8890-4987-8884-42bf25318f83",
+      "name": "Execution Validator"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = { ...$json };\n\nconst validation = data.execution_validation;\nconst plan = data.execution_plan;\n\n//===========================================\n// Queue\n//===========================================\n\nconst queue = {\n    version: \"1.0\",\n    created_at: new Date().toISOString(),\n    total_jobs: 0,\n    pending_jobs: 0,\n    queue: []\n};\n\n//===========================================\n// Stop if validation failed\n//===========================================\n\nif (!validation?.valid || validation.blocked) {\n\n    return [{\n        json: {\n            ...data,\n            execution_queue: queue\n        }\n    }];\n\n}\n\n//===========================================\n// Worker Mapping\n//===========================================\n\nconst WORKERS = {\n\n    CRM: \"CRM Worker\",\n\n    EMAIL: \"Email Worker\",\n\n    AI_REPLY: \"AI Reply Worker\",\n\n    NOTIFICATION: \"Notification Worker\",\n\n    TASK: \"Task Worker\",\n\n    CALENDAR: \"Calendar Worker\",\n\n    ANALYTICS: \"Analytics Worker\",\n\n    AUDIT: \"Audit Worker\"\n\n};\n\n//===========================================\n// Retry Policy\n//===========================================\n\nfunction getMaxAttempts(priority){\n\n    switch(priority){\n\n        case \"CRITICAL\":\n            return 5;\n\n        case \"HIGH\":\n            return 4;\n\n        case \"MEDIUM\":\n            return 3;\n\n        default:\n            return 2;\n\n    }\n\n}\n\n//===========================================\n// Queue Generator\n//===========================================\n\nfor(const job of plan.jobs){\n\n    if(!job.enabled)\n        continue;\n\n    const queueItem = {\n\n        queue_id:\n            \"JOB-\" +\n            String(queue.queue.length + 1).padStart(6,\"0\"),\n\n        job_id: job.id,\n\n        worker:\n            WORKERS[job.type] || \"Unknown Worker\",\n\n        type: job.type,\n\n        action: job.action,\n\n        status: \"PENDING\",\n\n        priority: job.priority,\n\n        attempts: 0,\n\n        max_attempts:\n            getMaxAttempts(job.priority),\n\n        created_at:\n            new Date().toISOString(),\n\n        scheduled_at:\n            new Date().toISOString(),\n\n        payload:\n            job.payload || {},\n\n        reason:\n            job.reason || \"\",\n\n        execution_time_ms: null,\n\n        completed_at: null,\n\n        last_error: null\n\n    };\n\n    queue.queue.push(queueItem);\n\n}\n\n//===========================================\n// Statistics\n//===========================================\n\nqueue.total_jobs =\nqueue.queue.length;\n\nqueue.pending_jobs =\nqueue.queue.length;\n\n//===========================================\n// Output\n//===========================================\n\nreturn [{\n\n    json:{\n\n        ...data,\n\n        execution_queue: queue\n\n    }\n\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4912,
+        272
+      ],
+      "id": "d1936f72-9ac0-4515-b3fb-ec8d2e49dd5c",
+      "name": "Execution Queue"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = { ...$json };\n\nconst queue =\ndata.execution_queue?.queue || [];\n\nconst output = [];\n\nfor (const job of queue) {\n\n    output.push({\n\n        json: {\n\n            // Entire workflow context\n            workflow_context: {\n\n                sender_name:\n                    data.from_name,\n\n                sender_email:\n                    data.from_email,\n\n                subject:\n                    data.subject,\n\n                message_body:\n                    data.message_body,\n\n                category:\n                    data.category,\n\n                subcategory:\n                    data.subcategory,\n\n                lead_score:\n                    data.lead_score,\n\n                buying_intent:\n                    data.buying_intent,\n\n                lead_temperature:\n                    data.lead_temperature,\n\n                estimated_budget:\n                    data.estimated_budget,\n\n                company:\n                    data.company,\n\n                project_type:\n                    data.project_type,\n\n                timeline:\n                    data.timeline,\n\n                probability_to_close:\n                    data.probability_to_close,\n\n                recommended_next_action:\n                    data.recommended_next_action,\n\n                reasoning:\n                    data.reasoning\n\n            },\n\n            decision:\n                data.decision,\n\n            routing_policy:\n                data.routing_policy,\n\n            compliance_risk:\n                data.compliance_risk,\n\n            enterprise_policy:\n                data.enterprise_policy,\n\n            score_optimizer:\n                data.score_optimizer,\n\n            sender_intelligence:\n                data.sender_intelligence,\n          \n\n            current_job: job\n\n        }\n\n    });\n\n}\n\n\nreturn output;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5152,
+        96
+      ],
+      "id": "d2eadfa1-8189-4cdb-b834-181227718625",
+      "name": "Worker Dispatcher"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process all incoming items\nreturn $input.all().map(item => {\n\n    const data = { ...item.json };\n\n    //=====================================================\n    // Clone current job\n    //=====================================================\n\n    const job = { ...data.current_job };\n\n    //=====================================================\n    // Execution Metadata\n    //=====================================================\n\n    const now = new Date();\n\n    const execution = {\n\n        execution_id:\n            \"EXEC-\" +\n            Date.now() +\n            \"-\" +\n            Math.floor(Math.random() * 100000),\n\n        worker_started_at:\n            now.toISOString(),\n\n        worker_completed_at: null,\n\n        execution_time_ms: null,\n\n        result: null,\n\n        error: null,\n\n        retry_count:\n            job.attempts || 0,\n\n        state: \"RUNNING\"\n\n    };\n\n    //=====================================================\n    // Update Job Status\n    //=====================================================\n\n    job.status = \"RUNNING\";\n\n    job.started_at =\n        execution.worker_started_at;\n\n    job.execution_id =\n        execution.execution_id;\n\n    //=====================================================\n    // Audit Trail\n    //=====================================================\n\n    job.lifecycle = {\n\n        created_at:\n            job.created_at,\n\n        queued_at:\n            job.scheduled_at,\n\n        started_at:\n            execution.worker_started_at,\n\n        completed_at: null\n\n    };\n\n    //=====================================================\n    // Return updated item\n    //=====================================================\n\n    return {\n\n        json: {\n\n            ...data,\n\n            current_job: job,\n\n            execution\n\n        }\n\n    };\n\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5392,
+        32
+      ],
+      "id": "b9b79640-3227-4e80-b85c-3d83bf27aa2f",
+      "name": "Job Lifecycle Manager"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = { ...$json };\n\nconst job = data.current_job;\nconst execution = data.execution;\n\n//====================================================\n// Worker Result\n//====================================================\n\nconst worker = {\n\n    worker_name: \"CRM Worker\",\n\n    success: false,\n\n    action: job.action,\n\n    message: \"\",\n\n    errors: [],\n\n    warnings: [],\n\n    crm_payload: null\n\n};\n\n//====================================================\n// Verify Correct Worker\n//====================================================\n\nif(job.worker !== \"CRM Worker\"){\n\n    worker.errors.push(\n        \"Incorrect worker routing.\"\n    );\n\n    execution.state = \"FAILED\";\n\n    execution.error = \"Wrong worker.\";\n\n    return [{\n        json:{\n            ...data,\n            execution,\n            worker_output:worker\n        }\n    }];\n}\n\n//====================================================\n// Required Fields\n//====================================================\n\nconst required = [\n\n    \"sender_email\",\n\n    \"sender_name\",\n\n    \"subject\",\n\n    \"lead_score\",\n\n    \"category\"\n\n];\n\nfor(const field of required){\n\n    if(\n\n        data.workflow_context[field] === undefined ||\n\n        data.workflow_context[field] === null ||\n\n        data.workflow_context[field] === \"\"\n\n    ){\n\n        worker.errors.push(\n\n            `${field} missing`\n\n        );\n\n    }\n\n}\n\n//====================================================\n// Stop if Invalid\n//====================================================\n\nif(worker.errors.length){\n\n    execution.state = \"FAILED\";\n\n    execution.error =\n\n    \"Validation failed.\";\n\n    return [{\n\n        json:{\n\n            ...data,\n\n            execution,\n\n            worker_output:worker\n\n        }\n\n    }];\n\n}\n\n//====================================================\n// Build CRM Payload\n//====================================================\n\nworker.crm_payload = {\n\n    \"Sender Name\":\n        data.workflow_context.sender_name,\n\n    \"Sender Email\":\n        data.workflow_context.sender_email,\n\n    \"Company\":\n        data.workflow_context.company,\n\n    \"Subject\":\n        data.workflow_context.subject,\n\n    \"Category\":\n        data.workflow_context.category,\n\n    \"Subcategory\":\n        data.workflow_context.subcategory,\n\n    \"Lead Score\":\n        data.workflow_context.lead_score,\n\n    \"Lead Temperature\":\n        data.workflow_context.lead_temperature,\n\n    \"Buying Intent\":\n        data.workflow_context.buying_intent,\n\n    \"Estimated Budget\":\n        data.workflow_context.estimated_budget,\n\n    \"Project Type\":\n        data.workflow_context.project_type,\n\n    \"Timeline\":\n        data.workflow_context.timeline,\n\n    \"Probability to Close\":\n        data.workflow_context.probability_to_close,\n\n    \"Status\":\n        data.decision.status,\n\n    \"Assigned To\":\n        data.decision.assigned_to\n\n};\n\n//====================================================\n// Determine Operation\n//====================================================\n\nworker.operation =\n\n\"CREATE_OR_UPDATE\";\n\n//====================================================\n// Success\n//====================================================\n\nworker.success = true;\n\nworker.message =\n\n\"CRM payload prepared successfully.\";\n\nexecution.state =\n\n\"READY_FOR_EXECUTION\";\n\nexecution.result =\n\n\"CRM payload ready.\";\n\n//====================================================\n// Output\n//====================================================\n\nreturn [{\n\n    json:{\n\n        ...data,\n\n        execution,\n\n        CRM_worker_output:worker\n\n    }\n\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6672,
+        64
+      ],
+      "id": "8e1a86c4-f44a-4ab7-a56c-75bc0537b86d",
+      "name": "CRM Worker"
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "app50hSVpdDG3pmdb",
+          "mode": "list",
+          "cachedResultName": "Untitled Base",
+          "cachedResultUrl": "https://airtable.com/app50hSVpdDG3pmdb"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblczLA3seL3nqiwY",
+          "mode": "list",
+          "cachedResultName": "CRM Record",
+          "cachedResultUrl": "https://airtable.com/app50hSVpdDG3pmdb/tblczLA3seL3nqiwY"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Sender Name": "={{ $('CRM Worker').item.json.CRM_worker_output.crm_payload['Sender Name'] }}",
+            "Sender Email": "={{ $('CRM Worker').item.json.CRM_worker_output.crm_payload['Sender Email'] }}",
+            "Company": "={{ $('CRM Worker').item.json.CRM_worker_output.crm_payload.Company }}",
+            "Subject": "={{ $('CRM Worker').item.json.CRM_worker_output.crm_payload.Subject }}",
+            "Category": "={{ $('CRM Worker').item.json.CRM_worker_output.crm_payload.Category }}",
+            "Subcategory": "={{ $('CRM Worker').item.json.CRM_worker_output.crm_payload.Subcategory }}",
+            "Lead Score": "={{ $('CRM Worker').item.json.CRM_worker_output.crm_payload['Lead Score'] }}",
+            "Lead Temperature": "={{ $('CRM Worker').item.json.CRM_worker_output.crm_payload['Lead Temperature'] }}",
+            "Buying Intent": "={{ $('CRM Worker').item.json.CRM_worker_output.crm_payload['Buying Intent'] }}",
+            "Estimated Budget": "={{ $('CRM Worker').item.json.CRM_worker_output.crm_payload['Estimated Budget'] }}",
+            "Project Type": "={{ $('CRM Worker').item.json.CRM_worker_output.crm_payload['Project Type'] }}",
+            "Status": "New",
+            "Timeline": "={{ $('CRM Worker').item.json.CRM_worker_output.crm_payload.Timeline }}",
+            "Probability to Close": "={{ $('CRM Worker').item.json.CRM_worker_output.crm_payload['Probability to Close'] }}",
+            "Assigned To": "={{ $('CRM Worker').item.json.CRM_worker_output.crm_payload['Assigned To'] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Lead ID",
+              "displayName": "Lead ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Sender Name",
+              "displayName": "Sender Name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Sender Email",
+              "displayName": "Sender Email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Company",
+              "displayName": "Company",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Subject",
+              "displayName": "Subject",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Category",
+              "displayName": "Category",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Sales",
+                  "value": "Sales"
+                },
+                {
+                  "name": "Support",
+                  "value": "Support"
+                },
+                {
+                  "name": "HR",
+                  "value": "HR"
+                },
+                {
+                  "name": "Finance",
+                  "value": "Finance"
+                },
+                {
+                  "name": "Legal",
+                  "value": "Legal"
+                },
+                {
+                  "name": "Marketing",
+                  "value": "Marketing"
+                },
+                {
+                  "name": "IT",
+                  "value": "IT"
+                },
+                {
+                  "name": "Operations",
+                  "value": "Operations"
+                },
+                {
+                  "name": "Meeting",
+                  "value": "Meeting"
+                },
+                {
+                  "name": "Spam",
+                  "value": "Spam"
+                },
+                {
+                  "name": "General",
+                  "value": "General"
+                },
+                {
+                  "name": "Unknown",
+                  "value": "Unknown"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Subcategory",
+              "displayName": "Subcategory",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Lead",
+                  "value": "Lead"
+                },
+                {
+                  "name": "Quotation Request",
+                  "value": "Quotation Request"
+                },
+                {
+                  "name": "Demo Request",
+                  "value": "Demo Request"
+                },
+                {
+                  "name": "Pricing Request",
+                  "value": "Pricing Request"
+                },
+                {
+                  "name": "Product Inquiry",
+                  "value": "Product Inquiry"
+                },
+                {
+                  "name": "Follow-up",
+                  "value": "Follow-up"
+                },
+                {
+                  "name": "Technical Issue",
+                  "value": "Technical Issue"
+                },
+                {
+                  "name": "Bug Report",
+                  "value": "Bug Report"
+                },
+                {
+                  "name": "Complaint",
+                  "value": "Complaint"
+                },
+                {
+                  "name": "Refund",
+                  "value": "Refund"
+                },
+                {
+                  "name": "Feature Request",
+                  "value": "Feature Request"
+                },
+                {
+                  "name": "Password Reset",
+                  "value": "Password Reset"
+                },
+                {
+                  "name": "Job Application",
+                  "value": "Job Application"
+                },
+                {
+                  "name": "Interview",
+                  "value": "Interview"
+                },
+                {
+                  "name": "Offer",
+                  "value": "Offer"
+                },
+                {
+                  "name": "Leave Request",
+                  "value": "Leave Request"
+                },
+                {
+                  "name": "Resignation",
+                  "value": "Resignation"
+                },
+                {
+                  "name": "Invoice",
+                  "value": "Invoice"
+                },
+                {
+                  "name": "Payment",
+                  "value": "Payment"
+                },
+                {
+                  "name": "Purchase Order",
+                  "value": "Purchase Order"
+                },
+                {
+                  "name": "Expense",
+                  "value": "Expense"
+                },
+                {
+                  "name": "Tax",
+                  "value": "Tax"
+                },
+                {
+                  "name": "Schedule",
+                  "value": "Schedule"
+                },
+                {
+                  "name": "Reschedule",
+                  "value": "Reschedule"
+                },
+                {
+                  "name": "Reminder",
+                  "value": "Reminder"
+                },
+                {
+                  "name": "Cancel",
+                  "value": "Cancel"
+                },
+                {
+                  "name": "Contract",
+                  "value": "Contract"
+                },
+                {
+                  "name": "Compliance",
+                  "value": "Compliance"
+                },
+                {
+                  "name": "NDA",
+                  "value": "NDA"
+                },
+                {
+                  "name": "Legal Notice",
+                  "value": "Legal Notice"
+                },
+                {
+                  "name": "Campaign",
+                  "value": "Campaign"
+                },
+                {
+                  "name": "Partnership",
+                  "value": "Partnership"
+                },
+                {
+                  "name": "Promotion",
+                  "value": "Promotion"
+                },
+                {
+                  "name": "Access Request",
+                  "value": "Access Request"
+                },
+                {
+                  "name": "Security",
+                  "value": "Security"
+                },
+                {
+                  "name": "Infrastructure",
+                  "value": "Infrastructure"
+                },
+                {
+                  "name": "System Issue",
+                  "value": "System Issue"
+                },
+                {
+                  "name": "Internal Request",
+                  "value": "Internal Request"
+                },
+                {
+                  "name": "Procurement",
+                  "value": "Procurement"
+                },
+                {
+                  "name": "Logistics",
+                  "value": "Logistics"
+                },
+                {
+                  "name": "Advertisement",
+                  "value": "Advertisement"
+                },
+                {
+                  "name": "Phishing",
+                  "value": "Phishing"
+                },
+                {
+                  "name": "Scam",
+                  "value": "Scam"
+                },
+                {
+                  "name": "Spam",
+                  "value": "Spam"
+                },
+                {
+                  "name": "General Inquiry",
+                  "value": "General Inquiry"
+                },
+                {
+                  "name": "Unknown",
+                  "value": "Unknown"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Lead Score",
+              "displayName": "Lead Score",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Lead Temperature",
+              "displayName": "Lead Temperature",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Hot",
+                  "value": "Hot"
+                },
+                {
+                  "name": "Warm",
+                  "value": "Warm"
+                },
+                {
+                  "name": "Cold",
+                  "value": "Cold"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Buying Intent",
+              "displayName": "Buying Intent",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Very High",
+                  "value": "Very High"
+                },
+                {
+                  "name": "High",
+                  "value": "High"
+                },
+                {
+                  "name": "Medium",
+                  "value": "Medium"
+                },
+                {
+                  "name": "Low",
+                  "value": "Low"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Estimated Budget",
+              "displayName": "Estimated Budget",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "High",
+                  "value": "High"
+                },
+                {
+                  "name": "Medium",
+                  "value": "Medium"
+                },
+                {
+                  "name": "Low",
+                  "value": "Low"
+                },
+                {
+                  "name": "Unknown",
+                  "value": "Unknown"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Project Type",
+              "displayName": "Project Type",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Timeline",
+              "displayName": "Timeline",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Immediate",
+                  "value": "Immediate"
+                },
+                {
+                  "name": "Within 30 Days",
+                  "value": "Within 30 Days"
+                },
+                {
+                  "name": "1-3 Months",
+                  "value": "1-3 Months"
+                },
+                {
+                  "name": "Unknown",
+                  "value": "Unknown"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Probability to Close",
+              "displayName": "Probability to Close",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "New",
+                  "value": "New"
+                },
+                {
+                  "name": "Qualified",
+                  "value": "Qualified"
+                },
+                {
+                  "name": "Contacted",
+                  "value": "Contacted"
+                },
+                {
+                  "name": "Proposal Sent",
+                  "value": "Proposal Sent"
+                },
+                {
+                  "name": "Negotiation",
+                  "value": "Negotiation"
+                },
+                {
+                  "name": "Won",
+                  "value": "Won"
+                },
+                {
+                  "name": "Lost",
+                  "value": "Lost"
+                },
+                {
+                  "name": "On Hold",
+                  "value": "On Hold"
+                },
+                {
+                  "name": "Archived",
+                  "value": "Archived"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Assigned To",
+              "displayName": "Assigned To",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Senior Sales",
+                  "value": "Senior Sales"
+                },
+                {
+                  "name": "Sales Team",
+                  "value": "Sales Team"
+                },
+                {
+                  "name": "Support Team",
+                  "value": "Support Team"
+                },
+                {
+                  "name": "HR Team",
+                  "value": "HR Team"
+                },
+                {
+                  "name": "Finance Team",
+                  "value": "Finance Team"
+                },
+                {
+                  "name": "Legal Team",
+                  "value": "Legal Team"
+                },
+                {
+                  "name": "Marketing Team",
+                  "value": "Marketing Team"
+                },
+                {
+                  "name": "Operations Team",
+                  "value": "Operations Team"
+                },
+                {
+                  "name": "IT Team",
+                  "value": "IT Team"
+                },
+                {
+                  "name": "Unassigned",
+                  "value": "Unassigned"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Last Contact",
+              "displayName": "Last Contact",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Created Time",
+              "displayName": "Created Time",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        7088,
+        288
+      ],
+      "id": "d64c4d34-8f1d-4e14-a01f-2fc1aeabbdf3",
+      "name": "Create a record",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "JakJ5QqnRCltt6YG",
+          "name": "Airtable Personal Access Token account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "table": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        7312,
+        176
+      ],
+      "id": "c6be82d2-c59b-4359-ba7b-db086a36d2bf",
+      "name": "Update record",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "JakJ5QqnRCltt6YG",
+          "name": "Airtable Personal Access Token account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "content": "AI Classification",
+        "height": 1312,
+        "width": 1088,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1088,
+        80
+      ],
+      "id": "c9f6e385-f193-4524-918f-6554e08826a7",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "Department Routing",
+        "height": 1568,
+        "width": 736,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2176,
+        -176
+      ],
+      "id": "d3b0ecc3-5a43-4887-b3d0-5aa4618b0453",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "Sales Department\n",
+        "height": 1568,
+        "width": 3732,
+        "color": "#FDC9C9"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2912,
+        -176
+      ],
+      "id": "4623ab07-87ab-4c25-92a9-1bc90794c686",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "CRM Worker and Airtable Handler",
+        "height": 752,
+        "width": 1140,
+        "color": "#C6FBC7"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        6640,
+        -176
+      ],
+      "id": "df2e0838-5448-4176-bf0d-ae67eb4b111f",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "errorMessage": "Something went wrong in Basic LLM Chain Node of sales route."
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        3184,
+        720
+      ],
+      "id": "ca1496b1-e747-40cd-9f96-da5ec7d33705",
+      "name": "Stop and Error"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        3248,
+        448
+      ],
+      "id": "e835b375-b962-4f17-a49d-85c93d7702d5",
+      "name": "models/gemini-2.5-flash-lite",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "thnOcnvjIC2zdqMH",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        3424,
+        464
+      ],
+      "id": "8a4d0214-c1c0-4ad9-8bfe-6daba18244fb",
+      "name": "models/gemini-3-flash-preview",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "thnOcnvjIC2zdqMH",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "errorMessage": "Spam Email Found!"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        -592,
+        816
+      ],
+      "id": "e77a3047-6958-4744-b72f-7795454ce393",
+      "name": "Stop and Error1"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Sender Name:{{ $json.from_name }}\nEmail Subject: {{ $json.subject }}\nEmail Body: \n{{ $json.message_body }}\n\n{{ $json.ai_context }}\n",
+        "needsFallback": true,
+        "messages": {
+          "messageValues": [
+            {
+              "message": "# ROLE\n\nYou are an enterprise-grade AI Email Classification Engine.\n\nYour job is to analyze business emails and classify them into structured business metadata that can be consumed by workflow automation systems.\n\nYou are NOT a chatbot.\n\nYou are NOT an assistant.\n\nYou are a classification engine.\n\nYour output will be consumed by automation software, therefore accuracy, consistency, and valid JSON are mandatory.\n\n----------------------------------------------------\nPRIMARY OBJECTIVE\n----------------------------------------------------\n\nAnalyze the complete email including:\n\n- Sender information\n- Subject\n- Email body\n- Attachment information\n- Attachment extracted text (if available)\n\nDetermine the business intent of the email and return a structured JSON object.\n\n----------------------------------------------------\nCLASSIFICATION RULES\n----------------------------------------------------\n\nDetermine:\n\n1. Primary Category\n2. Subcategory\n3. Priority\n4. Urgency\n5. Sentiment\n6. Language\n7. Confidence Score\n8. Human Review Requirement\n9. Short Summary\n10. Recommended Action\n11. Reasoning\n\n----------------------------------------------------\nALLOWED PRIMARY CATEGORIES\n----------------------------------------------------\n\nSales\n\nSupport\n\nHR\n\nFinance\n\nLegal\n\nMarketing\n\nIT\n\nOperations\n\nMeeting\n\nSpam\n\nGeneral\n\nUnknown\n\nNever invent new categories.\n\n----------------------------------------------------\nSUBCATEGORY\n----------------------------------------------------\n\nChoose the most appropriate subcategory.\n\nExamples include:\n\nSales\n- Lead\n- Product Inquiry\n- Pricing Request\n- Quotation Request\n- Demo Request\n- Follow-up\n\nSupport\n- Technical Issue\n- Bug Report\n- Complaint\n- Refund\n- Feature Request\n- Password Reset\n\nHR\n- Job Application\n- Interview\n- Offer\n- Leave Request\n- Resignation\n\nFinance\n- Invoice\n- Payment\n- Purchase Order\n- Expense\n- Tax\n\nMeeting\n- Schedule\n- Reschedule\n- Cancel\n- Reminder\n\nLegal\n- Contract\n- Compliance\n- NDA\n- Legal Notice\n\nMarketing\n- Campaign\n- Partnership\n- Promotion\n\nIT\n- Access Request\n- Security\n- Infrastructure\n- System Issue\n\nOperations\n- Internal Request\n- Procurement\n- Logistics\n\nSpam\n- Advertisement\n- Phishing\n- Scam\n- Spam\n\nGeneral\n- General Inquiry\n\nUnknown\n- Unknown\n\nIf no suitable subcategory exists, return \"Unknown\".\n\n----------------------------------------------------\nPRIORITY\n----------------------------------------------------\n\nAllowed values:\n\nCritical\n\nHigh\n\nMedium\n\nLow\n\nPriority represents business importance.\n\n----------------------------------------------------\nURGENCY\n----------------------------------------------------\n\nAllowed values:\n\nImmediate\n\nToday\n\nThis Week\n\nNo Deadline\n\nUrgency represents time sensitivity.\n\n----------------------------------------------------\nSENTIMENT\n----------------------------------------------------\n\nAllowed values:\n\nVery Positive\n\nPositive\n\nNeutral\n\nNegative\n\nVery Negative\n\n----------------------------------------------------\nLANGUAGE\n----------------------------------------------------\n\nDetect the primary language.\n\nExamples:\n\nEnglish\n\nUrdu\n\nMixed\n\nOther\n\n----------------------------------------------------\nCONFIDENCE\n----------------------------------------------------\n\nReturn an integer from 0 to 100.\n\n100 = Extremely confident\n\n0 = Unable to classify\n\n----------------------------------------------------\nHUMAN REVIEW\n----------------------------------------------------\n\nReturn:\n\ntrue\n\nor\n\nfalse\n\nHuman review should be true when:\n\n- confidence < 70\n- legal matters\n- financial risk\n- ambiguous requests\n- offensive language\n- possible fraud\n- phishing suspicion\n- missing important context\n\n----------------------------------------------------\nSUMMARY\n----------------------------------------------------\n\nProvide a concise summary.\n\nMaximum 30 words.\n\nDo not copy the email.\n\nSummarize the business purpose.\n\n----------------------------------------------------\nRECOMMENDED ACTION\n----------------------------------------------------\n\nExamples:\n\nAssign to Sales\n\nAssign to Support\n\nAssign to HR\n\nAssign to Finance\n\nReply with Pricing\n\nSchedule Meeting\n\nArchive\n\nIgnore\n\nMark as Spam\n\nEscalate\n\nRequest Human Review\n\n----------------------------------------------------\nREASONING\n----------------------------------------------------\n\nExplain briefly WHY the classification was chosen.\n\nMaximum 40 words.\n\n----------------------------------------------------\nATTACHMENTS\n----------------------------------------------------\n\nIf attachment text is available, use it as additional context.\n\nIf an attachment is unsupported or no text was extracted, ignore its content but consider its existence.\n\nDo not assume unsupported attachments contain useful information.\n\n----------------------------------------------------\nIMPORTANT\n----------------------------------------------------\n\nIf the email body contradicts attachment content, use both sources and choose the most reasonable interpretation.\n\n\n----------------------------------------------------\nOUTPUT FORMAT\n----------------------------------------------------\n\nReturn ONLY valid JSON.\n\nDo NOT use Markdown.\n\nDo NOT wrap JSON inside code blocks.\n\nDo NOT include explanations.\n\nDo NOT include comments.\n\nDo NOT include extra fields.\n\nThe JSON schema MUST exactly match:\n\n{\n  \"category\": \"\",\n  \"subcategory\": \"\",\n  \"priority\": \"\",\n  \"urgency\": \"\",\n  \"sentiment\": \"\",\n  \"language\": \"\",\n  \"confidence\": 0,\n  \"requires_human\": false,\n  \"summary\": \"\",\n  \"recommended_action\": \"\",\n  \"reasoning\": \"\"\n}\n"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        1200,
+        416
+      ],
+      "id": "76e46ae5-f873-45f7-bcc7-6dc39a34f35d",
+      "name": "Email Classification Engine",
+      "executeOnce": false,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "52aacaf0-20a8-42e6-bc20-61ea302594e8",
+              "leftValue": "={{ $json.decision.automation_allowed }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2240,
+        800
+      ],
+      "id": "ad5530c4-63f8-4d13-ab5b-96f0c65d51a2",
+      "name": "If Automation Allowed"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "",
+                    "rightValue": "IT",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "604aa60a-ab17-4913-a2f1-49ea9155f49c"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "IT"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "e668e911-ae87-4876-bc65-09926f077137",
+                    "leftValue": "",
+                    "rightValue": "Finance",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Finance"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "a34a4c0b-747e-435b-9a11-164b440624e7",
+                    "leftValue": "",
+                    "rightValue": "Legal",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Legal"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "8d52f6cd-7dda-49f2-aa4e-18720074c45d",
+                    "leftValue": "",
+                    "rightValue": "Spam",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Spam"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "6e84ed3f-b545-4683-8e01-e7c989e7249b",
+                    "leftValue": "",
+                    "rightValue": "Unknown",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Unknown"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        2240,
+        1024
+      ],
+      "id": "f4010694-c802-4ea0-9217-3514cfe98477",
+      "name": "Department Router on Automation Not Allowed",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.decision.route }}",
+                    "rightValue": "Sales",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "504e07ca-cc30-4751-9847-da6a6fa2d8e7"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Sales"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "7fab6581-d905-4e79-8825-32ba03d5a923",
+                    "leftValue": "={{ $json.decision.route }}",
+                    "rightValue": "Support",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Support"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "68e380bf-d909-49b9-9d06-a5b66a91b636",
+                    "leftValue": "={{ $json.decision.route }}",
+                    "rightValue": "HR",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "HR"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "f83bd747-91e2-4aae-b285-f6e37545a712",
+                    "leftValue": "={{ $json.decision.route }}",
+                    "rightValue": "Finance",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Finance"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "db0ac849-2e24-4965-9aa8-ed427e7d267e",
+                    "leftValue": "={{ $json.decision.route }}",
+                    "rightValue": "Marketing",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Marketing"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "dba5024c-46dc-4bbf-9b78-5a837e4a54bc",
+                    "leftValue": "={{ $json.decision.route }}",
+                    "rightValue": "IT",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "IT"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "bc458495-89c2-4b32-a422-3fad20e1a26d",
+                    "leftValue": "={{ $json.decision.route }}",
+                    "rightValue": "Operations",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Operations"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "134313d0-264a-4439-af7c-c46e64a2c71d",
+                    "leftValue": "={{ $json.decision.route }}",
+                    "rightValue": "Meeting",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Meeting"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "127e2589-47d1-46ad-b6b6-45086fadb1f8",
+                    "leftValue": "={{ $json.decision.route }}",
+                    "rightValue": "General",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "General"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        2512,
+        320
+      ],
+      "id": "3b6dc353-4a4a-4e4b-a487-85facca03dc4",
+      "name": "Department Router on Automation Allowed",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Analyze the following sales opportunity.\n\nEmail Information\n=================\n\nSender Name:\n{{ $json.from_name }}\n\nSender Email:\n{{ $json.from_email }}\n\nSubject:\n{{ $json.subject }}\n\nEmail Body:\n{{ $json.message_body }}\n\nClassification\n==============\n\nCategory:\n{{ $json.category }}\n\nSubcategory:\n{{ $json.subcategory }}\n\nPriority:\n{{ $json.priority }}\n\nSummary Generated by AI:\n{{ $json.summary }}\n\n===========\nAttachments' Text (If Any)\n\n{{ $json.ai_context }}\n\n===========\nEvaluate this sales opportunity according to the system instructions.\n\nReturn ONLY valid JSON.",
+        "needsFallback": true,
+        "messages": {
+          "messageValues": [
+            {
+              "message": "############################################################\nROLE\n############################################################\n\nYou are an Enterprise Sales Intelligence AI.\n\nYour responsibility is NOT to classify emails.\n\nThe email has already been classified as a Sales email.\n\nYour responsibility is to evaluate the sales opportunity and produce structured business intelligence that helps a sales team prioritize and respond effectively.\n\nYou are NOT a chatbot.\n\nYou are NOT a customer support assistant.\n\nYou are NOT a conversational AI.\n\nYou are a deterministic business analysis engine.\n\nYour output will be consumed by workflow automation systems.\n\nAccuracy, consistency and valid JSON are mandatory.\n\nNever invent facts.\n\nNever guess information.\n\nIf information cannot be determined from the email or attachments, return \"Unknown\".\n\n############################################################\nPRIMARY OBJECTIVE\n############################################################\n\nAnalyze all available information including:\n\n• Sender information\n• Sender email domain\n• Subject\n• Email body\n• Attachment text (if available)\n• Existing email classification\n\nDetermine the commercial value of this opportunity.\n\n############################################################\nBUSINESS EVALUATION\n############################################################\n\nEvaluate:\n\n1. Lead Score\n2. Lead Temperature\n3. Buying Intent\n4. Estimated Budget\n5. Decision Maker Probability\n6. Company Name\n7. Project Type\n8. Timeline\n9. Probability to Close\n10. Recommended Response Time\n11. Recommended Next Action\n12. Reasoning\n\n############################################################\nLEAD SCORE\n############################################################\n\nReturn an integer between 0 and 100.\n\nScoring guidance:\n\n90-100\nExcellent sales opportunity.\n\n75-89\nStrong qualified opportunity.\n\n50-74\nPotential opportunity.\n\n25-49\nWeak opportunity.\n\n0-24\nVery poor opportunity.\n\nConsider:\n\n• Business seriousness\n• Buying intent\n• Budget\n• Timeline\n• Project scope\n• Decision maker indicators\n• Professional communication\n• Clear requirements\n\nNever assign a high score without evidence.\n\n############################################################\nLEAD TEMPERATURE\n############################################################\n\nAllowed values:\n\nHot\n\nWarm\n\nCold\n\nRules:\n\nHot\n\nCustomer clearly wants to buy.\n\nBudget and/or timeline mentioned.\n\nQuotation requested.\n\nProposal requested.\n\nDemo requested.\n\nWarm\n\nCustomer has genuine interest but important information is missing.\n\nCold\n\nGeneral discussion.\n\nResearch.\n\nStudent inquiry.\n\nNo buying signals.\n\n############################################################\nBUYING INTENT\n############################################################\n\nAllowed values:\n\nVery High\n\nHigh\n\nMedium\n\nLow\n\nVery High\n\nQuotation request.\n\nProposal request.\n\nPurchase request.\n\nImmediate implementation.\n\nHigh\n\nPricing request.\n\nDemo request.\n\nProduct comparison.\n\nMedium\n\nGeneral product questions.\n\nExploring solutions.\n\nLow\n\nResearch only.\n\n############################################################\nESTIMATED BUDGET\n############################################################\n\nAllowed values:\n\nHigh\n\nMedium\n\nLow\n\nUnknown\n\nNever invent a budget.\n\nOnly infer from evidence.\n\nIf uncertain:\n\nUnknown\n\n############################################################\nDECISION MAKER PROBABILITY\n############################################################\n\nAllowed values:\n\nLikely\n\nPossible\n\nUnlikely\n\nIndicators include:\n\nOwner\n\nFounder\n\nCEO\n\nDirector\n\nManager\n\nCorporate purchasing language\n\nBusiness email domain\n\n\"We have decided...\"\n\n\"Our company requires...\"\n\nOtherwise return:\n\nPossible\n\n############################################################\nCOMPANY NAME\n############################################################\n\nExtract company name if confidently available from:\n\nEmail signature\n\nCompany name in email\n\nBusiness domain\n\nAttachment\n\nIf unavailable:\n\nReturn:\n\nUnknown\n\n############################################################\nPROJECT TYPE\n############################################################\n\nReturn a concise project description.\n\nExamples:\n\nAI Automation\n\nCRM Integration\n\nWebsite Development\n\nERP Integration\n\nMobile App\n\nChatbot\n\nWorkflow Automation\n\nDocument Processing\n\nMaximum 40 characters.\n\n############################################################\nTIMELINE\n############################################################\n\nAllowed values:\n\nImmediate\n\nWithin 30 Days\n\n1-3 Months\n\nUnknown\n\n############################################################\nPROBABILITY TO CLOSE\n############################################################\n\nReturn an integer between 0 and 100.\n\nConsider:\n\nLead quality\n\nBuying intent\n\nTimeline\n\nDecision maker\n\nBudget\n\nProfessional communication\n\n############################################################\nRESPONSE PRIORITY\n############################################################\n\nAllowed values:\n\nImmediately\n\nWithin 1 Hour\n\nToday\n\nTomorrow\n\nThis Week\n\nRules:\n\nHot -> Immediately\n\nWarm -> Today\n\nCold -> This Week\n\n############################################################\nRECOMMENDED NEXT ACTION\n############################################################\n\nAllowed values:\n\nSend Proposal\n\nSchedule Discovery Call\n\nBook Demo\n\nRequest More Information\n\nAssign Senior Sales\n\nFollow-up\n\nArchive\n\n############################################################\nREASONING\n############################################################\n\nMaximum 50 words.\n\nBriefly explain the business reasoning behind your evaluation.\n\n############################################################\nIMPORTANT RULES\n############################################################\n\nDo NOT invent:\n\nBudget\n\nTimeline\n\nCompany\n\nDecision maker\n\nRequirements\n\nDo NOT hallucinate.\n\nIf uncertain return Unknown.\n\nIf attachment text exists, use it.\n\nIf attachment contradicts the email, consider both sources before deciding.\n\n############################################################\nOUTPUT\n############################################################\n\nReturn ONLY valid JSON.\n\nNo Markdown.\n\nNo explanations.\n\nNo code blocks.\n\nNo comments.\n\nNo additional fields.\n\nThe JSON schema MUST exactly match:\n\n{\n  \"lead_score\": 0,\n  \"lead_temperature\": \"\",\n  \"buying_intent\": \"\",\n  \"estimated_budget\": \"\",\n  \"decision_maker_probability\": \"\",\n  \"company\": \"\",\n  \"project_type\": \"\",\n  \"timeline\": \"\",\n  \"probability_to_close\": 0,\n  \"response_priority\": \"\",\n  \"recommended_next_action\": \"\",\n  \"reasoning\": \"\"\n}"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        3120,
+        208
+      ],
+      "id": "33c63df9-d142-4ff6-9b74-ed72c62743a4",
+      "name": "Sales Opportunity Analyzer",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "app50hSVpdDG3pmdb",
+          "mode": "list",
+          "cachedResultName": "Untitled Base",
+          "cachedResultUrl": "https://airtable.com/app50hSVpdDG3pmdb"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblczLA3seL3nqiwY",
+          "mode": "list",
+          "cachedResultName": "CRM Record",
+          "cachedResultUrl": "https://airtable.com/app50hSVpdDG3pmdb/tblczLA3seL3nqiwY"
+        },
+        "filterByFormula": "={Sender Email} = \"{{ $json.workflow_context.sender_email }}\"",
+        "returnAll": false,
+        "limit": 1,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        6864,
+        64
+      ],
+      "id": "5ea8683f-104e-4132-b3c1-dc120574d0a0",
+      "name": "Fined Customer's Record from Airtable Datadase",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "JakJ5QqnRCltt6YG",
+          "name": "Airtable Personal Access Token account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "errorMessage": "Something went wrong in finding customer record from Airtable database"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        6880,
+        320
+      ],
+      "id": "10379c40-b02b-4c5b-9aa2-f67ff63df84b",
+      "name": "Stop and Error3"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "80f4a813-b58d-46f8-8669-da4c0d47e42d",
+              "leftValue": "={{$json.id}}",
+              "rightValue": 0,
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        7056,
+        48
+      ],
+      "id": "453c5b6f-e5e7-4331-b12e-c0e1fadb606f",
+      "name": "If Record Found"
+    },
+    {
+      "parameters": {
+        "errorMessage": "Some thing went wrong in updating customer record"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        7312,
+        48
+      ],
+      "id": "431e88bf-0ceb-4280-92ea-46e4f2236a38",
+      "name": "Stop and Error4"
+    },
+    {
+      "parameters": {
+        "errorMessage": "Something went wrong in creating customer record in Airtable database"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        7296,
+        416
+      ],
+      "id": "607af469-01c9-4bda-9244-86e2904463b6",
+      "name": "Stop and Error5"
+    },
+    {
+      "parameters": {
+        "errorMessage": "Error in Gmail Trigger"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        -1024,
+        624
+      ],
+      "id": "7abd5ba7-b596-45ab-9ac8-2fe4cc5ac242",
+      "name": "Stop and Error6"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "messageId": "={{ $json.id }}",
+        "simple": false,
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -832,
+        400
+      ],
+      "id": "234dbce5-2114-4a9d-9e0a-538b71d76848",
+      "name": "Getting Gmail Message",
+      "webhookId": "d3c175d9-2160-42e2-9645-ac0832c8efd4",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 500,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "5VgA7Z0GSVYoraL1",
+          "name": "Gmail account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "errorMessage": "something went wrong in getting Gmail message"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        -816,
+        208
+      ],
+      "id": "6c5dab05-a5eb-4050-908e-b45e2d2576ac",
+      "name": "Stop and Error7"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "194ea847-80cc-4e6c-a718-3ce9c492fa5a",
+              "leftValue": "={{ !!$binary && Object.keys($binary).length > 0 }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        -400,
+        400
+      ],
+      "id": "3921dec3-b25e-480e-8c03-adb6a70099a0",
+      "name": "If attachment"
+    },
+    {
+      "parameters": {
+        "errorMessage": "Something went wrong in Email Classification Engine"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        1168,
+        192
+      ],
+      "id": "0267cbc7-f75b-4933-b210-122d5bfcea73",
+      "name": "Stop and Error8"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.current_job.worker }}",
+                    "rightValue": "CRM Worker",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "0b0629cd-71f3-415d-a35b-4a4432ddcdf2"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "CRM Worker"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "236c5d13-9931-4637-a7d2-2277696b5233",
+                    "leftValue": "={{ $json.current_job.worker }}",
+                    "rightValue": "Email Worker",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Email Worker"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "9b81d7c0-a980-4f38-93d6-94f39cb38752",
+                    "leftValue": "={{ $json.current_job.worker }}",
+                    "rightValue": "AI Reply Worker",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "AI Reply Worker"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "b8295a1f-7c88-416c-ad1e-be0e70437896",
+                    "leftValue": "={{ $json.current_job.worker }}",
+                    "rightValue": "Notification Worker",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Notification Worker"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "58b6b78a-3414-4a9e-8293-dd3b392fb3cd",
+                    "leftValue": "={{ $json.current_job.worker }}",
+                    "rightValue": "Calendar Worker",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Calendar Worker"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "767c1979-0dd0-4f4c-bd05-44110540693c",
+                    "leftValue": "={{ $json.current_job.worker }}",
+                    "rightValue": "Audit Worker",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Audit Worker"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "88259ec4-9ecc-4179-b36a-95326523b9c5",
+                    "leftValue": "={{ $json.current_job.worker }}",
+                    "rightValue": "Analytics Worker",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Analytics Worker"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "2272b501-f0d1-46da-b85e-0b43777c6e7a",
+                    "leftValue": "={{ $json.current_job.worker }}",
+                    "rightValue": "Task Worker",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Task Worker"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "ae9a81d8-6df0-439b-bd39-e07f281889bc",
+                    "leftValue": "={{ $json.current_job.worker }}",
+                    "rightValue": "Unknown Worker",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Unknown Worker"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        5648,
+        16
+      ],
+      "id": "fbc4521f-3e6a-462a-abed-ad78f5922abc",
+      "name": "Switch1",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.current_job.action }}",
+                    "rightValue": "=NOTIFY_SALES_TEAM",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "267a04d7-0486-4614-9782-c777d01eb26b"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "NOTIFY_SALES_TEAM"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "b4c9f4fd-ec62-4880-ada0-eaffd82aa849",
+                    "leftValue": "={{ $json.current_job.action }}",
+                    "rightValue": "NOTIFY_MANAGER",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "NOTIFY_MANAGER"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        5248,
+        1120
+      ],
+      "id": "05504a11-840b-42b6-93bf-a6ad1f29387b",
+      "name": "Switch2"
+    },
+    {
+      "parameters": {
+        "errorMessage": "Error In Worker Routing"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        5296,
+        560
+      ],
+      "id": "5b65a9d7-e5ea-4de9-9d84-1888476959e8",
+      "name": "Stop and Error9"
+    },
+    {
+      "parameters": {
+        "errorMessage": "Error in Department Router & Automation Allowed (Switch Node)"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        2400,
+        272
+      ],
+      "id": "4e6cf024-0687-4398-9d48-204707d7a5e6",
+      "name": "Stop and Error10"
+    },
+    {
+      "parameters": {
+        "errorMessage": "Error in Department Router & Automation NOT Allowed (Switch Node)"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        2720,
+        1232
+      ],
+      "id": "03eb2624-aa43-4e87-a7e8-4406acab76aa",
+      "name": "Stop and Error11"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Sender: {{ $json.workflow_context.sender_name }}\nSubject: {{ $json.workflow_context.subject }}\nOriginal message:\n{{ $json.workflow_context.message_body }}\n\nContext for your reply:\nCategory: {{ $json.workflow_context.category }}\nRecommended next action: {{ $json.workflow_context.recommended_next_action }}\nReasoning: {{ $json.workflow_context.reasoning }}",
+        "needsFallback": true,
+        "messages": {
+          "messageValues": [
+            {
+              "message": "You are drafting a professional email reply on behalf of the company.\n\nWrite a concise, professional reply acknowledging their message and reflecting the recommended next action above. Do not invent specific prices, dates, or commitments not present in the context. Sign off as \"The Team\".\n\nReturn JSON only: { \"reply_subject\": \"...\", \"reply_body\": \"...\" }"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        7008,
+        656
+      ],
+      "id": "f23becb4-c0f5-4085-9589-89c951131bb5",
+      "name": "Basic LLM Chain",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        6832,
+        864
+      ],
+      "id": "6905d21b-8391-4088-b66f-18245827b93b",
+      "name": "Google Gemini Chat Model2",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "thnOcnvjIC2zdqMH",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        7024,
+        880
+      ],
+      "id": "d8691632-1917-4460-aed9-12ec17a52a28",
+      "name": "Google Gemini Chat Model3",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "thnOcnvjIC2zdqMH",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "errorMessage": "Some thing went wrong in Basic LLM Chain Node creating  Email Response"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        7216,
+        896
+      ],
+      "id": "d1d034c3-b82b-4a28-8bfc-a3feabbe34cc",
+      "name": "Stop and Error12"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = { ...$json };\nconst job = data.current_job;\n\nconst worker = {\n  worker_name: \"Email Worker\",\n  success: false,\n  action: job.action,\n  message: \"\",\n  errors: [],\n  warnings: []\n};\n\nif (job.worker !== \"Email Worker\") {\n  worker.errors.push(\"Incorrect worker routing.\");\n  return [{ json: { ...data, worker_output: worker } }];\n}\n\nconst required = [\"reply_subject\", \"reply_body\"];\nfor (const field of required) {\n  if (!data[field]) worker.errors.push(`${field} missing`);\n}\n\nif (!data.workflow_context?.sender_email) {\n  worker.errors.push(\"sender_email missing\");\n}\n\nif (worker.errors.length > 0) {\n  return [{ json: { ...data, worker_output: worker } }];\n}\n\nworker.success = true;\nworker.message = \"Draft ready for Gmail node\";\n\nreturn [{ json: { ...data, worker_output: worker } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        7440,
+        640
+      ],
+      "id": "5e45564a-93be-4680-a9da-5de973708282",
+      "name": "Email Worker"
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "subject": "=Re: {{ $json.reply_subject }}",
+        "message": "={{ $json.reply_body }}",
+        "options": {
+          "sendTo": "={{ $json.workflow_context.sender_email }}"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        7520,
+        880
+      ],
+      "id": "23a02406-a62b-4c3a-889c-e2a12ba299e8",
+      "name": "Create a draft",
+      "webhookId": "2c978d66-544b-4d3e-8388-89641b6e2568",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "5VgA7Z0GSVYoraL1",
+          "name": "Gmail account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "errorMessage": "Error in drafting Email"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        7504,
+        1104
+      ],
+      "id": "e901ee56-c0e9-4a58-a96c-ad6852d3c974",
+      "name": "Stop and Error13"
+    },
+    {
+      "parameters": {
+        "content": "Email Worker",
+        "height": 816,
+        "width": 1136,
+        "color": "#A5A3FF"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        6640,
+        576
+      ],
+      "id": "7f20ad8f-fbe1-46ff-8921-2bcdb440b66a",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = { ...$json };\nconst job = data.current_job;\n\nreturn [{\n  json: {\n    ...data,\n    worker_output: {\n      worker_name: job.worker || \"Unimplemented Worker\",\n      success: false,\n      status: \"SKIPPED\",\n      message: `${job.type} worker not yet implemented.`\n    }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5056,
+        1024
+      ],
+      "id": "a6223db6-99eb-461e-9c92-82231808959f",
+      "name": "Worker Stub Notify Sales"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = { ...$json };\nconst job = data.current_job;\n\nreturn [{\n  json: {\n    ...data,\n    worker_output: {\n      worker_name: job.worker || \"Unimplemented Worker\",\n      success: false,\n      status: \"SKIPPED\",\n      message: `${job.type} worker not yet implemented.`\n    }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4816,
+        1072
+      ],
+      "id": "ab0bb0ac-b6d7-44cc-b390-2d6b731c2463",
+      "name": "Worker Stub Notify Manager"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = { ...$json };\nconst job = data.current_job;\n\nreturn [{\n  json: {\n    ...data,\n    worker_output: {\n      worker_name: job.worker || \"Unimplemented Worker\",\n      success: false,\n      status: \"SKIPPED\",\n      message: `${job.type} worker not yet implemented.`\n    }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5952,
+        -144
+      ],
+      "id": "242e939d-01f5-4785-8ab6-99d7c9427a88",
+      "name": "AI Worker Stub"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = { ...$json };\nconst job = data.current_job;\n\nreturn [{\n  json: {\n    ...data,\n    worker_output: {\n      worker_name: job.worker || \"Unimplemented Worker\",\n      success: false,\n      status: \"SKIPPED\",\n      message: `${job.type} worker not yet implemented.`\n    }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6192,
+        -96
+      ],
+      "id": "8d99b66f-729b-4548-b724-28b4fd251e20",
+      "name": "Calender Worker Stub"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = { ...$json };\nconst job = data.current_job;\n\nreturn [{\n  json: {\n    ...data,\n    worker_output: {\n      worker_name: job.worker || \"Unimplemented Worker\",\n      success: false,\n      status: \"SKIPPED\",\n      message: `${job.type} worker not yet implemented.`\n    }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6112,
+        224
+      ],
+      "id": "f6526329-ca9c-4e91-a992-851b01cf520e",
+      "name": "Audit Worker Stub"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = { ...$json };\nconst job = data.current_job;\n\nreturn [{\n  json: {\n    ...data,\n    worker_output: {\n      worker_name: job.worker || \"Unimplemented Worker\",\n      success: false,\n      status: \"SKIPPED\",\n      message: `${job.type} worker not yet implemented.`\n    }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6224,
+        400
+      ],
+      "id": "a4af4bbf-2574-482e-904e-08a7baf8cacc",
+      "name": "Analysis Worker Stub"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = { ...$json };\nconst job = data.current_job;\n\nreturn [{\n  json: {\n    ...data,\n    worker_output: {\n      worker_name: job.worker || \"Unimplemented Worker\",\n      success: false,\n      status: \"SKIPPED\",\n      message: `${job.type} worker not yet implemented.`\n    }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5984,
+        736
+      ],
+      "id": "0deb127a-fcd2-4b47-a785-5ef390d67285",
+      "name": "Unknown Worker Stub"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = { ...$json };\nconst job = data.current_job;\n\nreturn [{\n  json: {\n    ...data,\n    worker_output: {\n      worker_name: job.worker || \"Unimplemented Worker\",\n      success: false,\n      status: \"SKIPPED\",\n      message: `${job.type} worker not yet implemented.`\n    }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6144,
+        592
+      ],
+      "id": "c148fde6-6e97-4806-8d67-b89742ef86ab",
+      "name": "Task Worker Stub"
+    },
+    {
+      "parameters": {
+        "numberInputs": 8
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        2752,
+        400
+      ],
+      "id": "6a48cbc9-e2f0-428e-a5cb-ddd9ee6d950d",
+      "name": "Merge4"
+    },
+    {
+      "parameters": {
+        "numberInputs": 5
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        2528,
+        976
+      ],
+      "id": "0de1c5a1-cf8f-4d5c-baae-e234813d0d0d",
+      "name": "Merge5"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = { ...$json };\n\nreturn [{\n  json: {\n    ...data,\n    department_worker_output: {\n      department: data.category || \"Unclassified\",\n      status: \"SKIPPED\",\n      success: false,\n      message: `${data.category || \"This\"} department automation not yet implemented.`,\n      routing_decision: data.decision?.route || null,\n      routing_reason: data.decision?.reason || null,\n      sender_email: data.from_email || data.sender_email || null,\n      subject: data.subject || null,\n      logged_at: new Date().toISOString()\n    }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2720,
+        912
+      ],
+      "id": "9e8cf92a-0900-465c-b892-94c7c104dcd3",
+      "name": "Worker Stub (Implement Them in Future)"
+    },
+    {
+      "parameters": {
+        "jsCode": "let text = $json.text;\n\n// Remove markdown if present\ntext = text.replace(/```json/g, \"\")\n           .replace(/```/g, \"\")\n           .trim();\n\nlet data;\n\ntry {\n    data = JSON.parse(text);\n} catch (err) {\n    return [{\n        json: {\n            parse_error: true,\n            error: err.message,\n            raw_output: text\n        }\n    }];\n}\n\n// Allowed values\nconst allowedCategories = [\n    \"Sales\",\n    \"Support\",\n    \"HR\",\n    \"Finance\",\n    \"Legal\",\n    \"Marketing\",\n    \"IT\",\n    \"Operations\",\n    \"Meeting\",\n    \"Spam\",\n    \"General\",\n    \"Unknown\"\n];\n\nif (!allowedCategories.includes(data.category)) {\n    data.category = \"Unknown\";\n}\n\ndata.confidence = Number(data.confidence);\n\nif (isNaN(data.confidence))\n    data.confidence = 0;\n\ndata.confidence = Math.max(0, Math.min(100, data.confidence));\n\nreturn [{\n    json: data\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1520,
+        416
+      ],
+      "id": "4030daaa-496f-4b44-addb-56f51738ec9d",
+      "name": "Enterprise JSON Parser & Validator"
+    }
+  ],
+  "pinData": {
+    "Gmail Trigger": [
+      {
+        "json": {
+          "id": "19f31eb1d5b24fec",
+          "threadId": "19f31eb1d5b24fec",
+          "snippet": "Dear Team, I hope you are doing well. We are looking for a company or freelancer who can help us automate several internal business processes using AI and workflow automation. Our current challenges",
+          "payload": {
+            "mimeType": "multipart/mixed"
+          },
+          "sizeEstimate": 319530,
+          "historyId": "2963712",
+          "internalDate": "1783248907000",
+          "labels": [
+            {
+              "id": "INBOX",
+              "name": "INBOX"
+            },
+            {
+              "id": "CATEGORY_PERSONAL",
+              "name": "CATEGORY_PERSONAL"
+            },
+            {
+              "id": "UNREAD",
+              "name": "UNREAD"
+            }
+          ],
+          "From": "Hafiza Rabbeea Yasmeen <hafizarabbeeayasmeen@gmail.com>",
+          "Subject": "Quotation Request for AI Workflow Automation Services",
+          "To": "razaaliabid87@gmail.com"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Getting Gmail Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Stop and Error6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Extract from PDF",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Extract from TEXT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from PDF": {
+      "main": [
+        [
+          {
+            "node": "Normalize PDF Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from TEXT": {
+      "main": [
+        [
+          {
+            "node": "Normalize TEXT Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize PDF Data": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize TEXT Data": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Normalize Email Message Body Data": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Total and Single Attachment Length Calculator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Creating Items of Multiple Attachments and No of Attachment Counter": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "File Information of Each Attachment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If not spam": {
+      "main": [
+        [
+          {
+            "node": "Normalize Email Message Body Data",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "If attachment",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Stop and Error1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Total and Single Attachment Length Calculator": {
+      "main": [
+        [
+          {
+            "node": "Context Builder into single item Code Node",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "File Information of Each Attachment": {
+      "main": [
+        [
+          {
+            "node": "Total & Number of supported and un-supported documents",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Total & Number of supported and un-supported documents": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge1": {
+      "main": [
+        [
+          {
+            "node": "Making One Item of Multiple Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Context Builder into single item Code Node": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Making One Item of Multiple Items": {
+      "main": [
+        [
+          {
+            "node": "Email Classification Engine",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge2",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Email Classification Engine",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Business Validation Node": {
+      "main": [
+        [
+          {
+            "node": "Enterprise Decision Engine",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enterprise Decision Engine": {
+      "main": [
+        [
+          {
+            "node": "Merge2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge2": {
+      "main": [
+        [
+          {
+            "node": "If Automation Allowed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Email Classification Engine",
+            "type": "ai_languageModel",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Enterprise JSON Parser": {
+      "main": [
+        [
+          {
+            "node": "Enterprise Sales Validation Code Node",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enterprise Sales Validation Code Node": {
+      "main": [
+        [
+          {
+            "node": "Sales Decision Core Engine V2.0",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sales Decision Core Engine V2.0": {
+      "main": [
+        [
+          {
+            "node": "Advanced Rules Engine 2.1A Environment Analyzer (time, weekend, business hours)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Advanced Rules Engine 2.1A Environment Analyzer (time, weekend, business hours)": {
+      "main": [
+        [
+          {
+            "node": "Merge3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Advanced Rules Engine 2.1B Sender Intelligence (email, company, domain, reputation)": {
+      "main": [
+        [
+          {
+            "node": "Advanced Rules Engine 2.1C Score Optimizer (adjustments, SLA, owner recommendation)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Advanced Rules Engine 2.1C Score Optimizer (adjustments, SLA, owner recommendation)": {
+      "main": [
+        [
+          {
+            "node": "Enterprise Policy Engine V2.2A Organization Policies",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enterprise Policy Engine V2.2A Organization Policies": {
+      "main": [
+        [
+          {
+            "node": "Enterprise Policy Engine V2.2B Routing Policies",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enterprise Policy Engine V2.2B Routing Policies": {
+      "main": [
+        [
+          {
+            "node": "Enterprise Policy Engine 2.2C – Compliance & Risk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge3": {
+      "main": [
+        [
+          {
+            "node": "Advanced Rules Engine 2.1B Sender Intelligence (email, company, domain, reputation)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enterprise Policy Engine 2.2C – Compliance & Risk": {
+      "main": [
+        [
+          {
+            "node": "Execution Planner",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execution Planner": {
+      "main": [
+        [
+          {
+            "node": "Execution Validator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execution Validator": {
+      "main": [
+        [
+          {
+            "node": "Execution Queue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execution Queue": {
+      "main": [
+        [
+          {
+            "node": "Worker Dispatcher",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Worker Dispatcher": {
+      "main": [
+        [
+          {
+            "node": "Job Lifecycle Manager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Job Lifecycle Manager": {
+      "main": [
+        [
+          {
+            "node": "Switch1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CRM Worker": {
+      "main": [
+        [
+          {
+            "node": "Fined Customer's Record from Airtable Datadase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "models/gemini-2.5-flash-lite": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Sales Opportunity Analyzer",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "models/gemini-3-flash-preview": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Sales Opportunity Analyzer",
+            "type": "ai_languageModel",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Email Classification Engine": {
+      "main": [
+        [
+          {
+            "node": "Enterprise JSON Parser & Validator",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Stop and Error8",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Automation Allowed": {
+      "main": [
+        [
+          {
+            "node": "Department Router on Automation Allowed",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Department Router on Automation Not Allowed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Department Router on Automation Allowed": {
+      "main": [
+        [
+          {
+            "node": "Sales Opportunity Analyzer",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge3",
+            "type": "main",
+            "index": 1
+          }
+        ],
+        [
+          {
+            "node": "Merge4",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Merge4",
+            "type": "main",
+            "index": 1
+          }
+        ],
+        [
+          {
+            "node": "Merge4",
+            "type": "main",
+            "index": 2
+          }
+        ],
+        [
+          {
+            "node": "Merge4",
+            "type": "main",
+            "index": 3
+          }
+        ],
+        [
+          {
+            "node": "Merge4",
+            "type": "main",
+            "index": 4
+          }
+        ],
+        [
+          {
+            "node": "Merge4",
+            "type": "main",
+            "index": 5
+          }
+        ],
+        [
+          {
+            "node": "Merge4",
+            "type": "main",
+            "index": 6
+          }
+        ],
+        [
+          {
+            "node": "Merge4",
+            "type": "main",
+            "index": 7
+          }
+        ],
+        [
+          {
+            "node": "Stop and Error10",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sales Opportunity Analyzer": {
+      "main": [
+        [
+          {
+            "node": "Enterprise JSON Parser",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Stop and Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fined Customer's Record from Airtable Datadase": {
+      "main": [
+        [
+          {
+            "node": "If Record Found",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Stop and Error3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Record Found": {
+      "main": [
+        [
+          {
+            "node": "Update record",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create a record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update record": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Stop and Error4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a record": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Stop and Error5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Getting Gmail Message": {
+      "main": [
+        [
+          {
+            "node": "If not spam",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Stop and Error7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If attachment": {
+      "main": [
+        [
+          {
+            "node": "Creating Items of Multiple Attachments and No of Attachment Counter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch1": {
+      "main": [
+        [
+          {
+            "node": "CRM Worker",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Worker Stub",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Switch2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Calender Worker Stub",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Audit Worker Stub",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Analysis Worker Stub",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Task Worker Stub",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Unknown Worker Stub",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Stop and Error9",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Department Router on Automation Not Allowed": {
+      "main": [
+        [
+          {
+            "node": "Merge5",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Merge5",
+            "type": "main",
+            "index": 1
+          }
+        ],
+        [
+          {
+            "node": "Merge5",
+            "type": "main",
+            "index": 2
+          }
+        ],
+        [
+          {
+            "node": "Merge5",
+            "type": "main",
+            "index": 3
+          }
+        ],
+        [
+          {
+            "node": "Merge5",
+            "type": "main",
+            "index": 4
+          }
+        ],
+        [
+          {
+            "node": "Stop and Error11",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Email Worker",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Stop and Error12",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Worker": {
+      "main": [
+        [
+          {
+            "node": "Create a draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a draft": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Stop and Error13",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch2": {
+      "main": [
+        [
+          {
+            "node": "Worker Stub Notify Sales",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Worker Stub Notify Manager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge5": {
+      "main": [
+        [
+          {
+            "node": "Worker Stub (Implement Them in Future)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge4": {
+      "main": [
+        [
+          {
+            "node": "Worker Stub (Implement Them in Future)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enterprise JSON Parser & Validator": {
+      "main": [
+        [
+          {
+            "node": "Business Validation Node",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "04e1c46c-2f2e-4089-800c-f8e209339314",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "22a94396d635bdc18c036410c0b06da7851292b894f2255bca52f69454134ddc"
+  },
+  "nodeGroups": [],
+  "id": "QKdACtou7eRhTm9z",
+  "tags": []
+}
